@@ -26,6 +26,8 @@ import { ProductSection } from '@/components/ProductSection';
 import { TrustSignals } from '@/components/TrustSignals';
 import {LimitedAvailability} from '@/components/LimitedAvailability';
 import {NewArrivals} from '@/components/NewArrival';
+import Footer from '@/components/Footer';
+import Navbar  from '@/components/Navbar';
 const GlobalStyles = () => (
   <>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
@@ -93,11 +95,13 @@ export default function App() {
 
   return (
     <div className="antialiased overflow-x-hidden selection:bg-black selection:text-white">
+
       <GlobalStyles />
       <BackgroundCanvas />
   
       
       <main className="pt-16 md:pt-0">
+        <Navbar />
         <Hero />
         
         <CategoryPills />
@@ -118,6 +122,7 @@ export default function App() {
   
         <NewArrivals />
         <TrustSignals />
+        <Footer />
       </main>
 
    
