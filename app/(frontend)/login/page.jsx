@@ -75,9 +75,9 @@ function LoginFormContent() {
 
       // Role-Based Routing logic using the data returned from our server client
       if (data.role === 'admin') {
-        router.push('/admin/dashboard')
-      } else {
         router.push('/dashboard')
+      } else {
+        router.push('/my-orders')
       }
 
     } catch (error) {

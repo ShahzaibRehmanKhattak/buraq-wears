@@ -11,7 +11,6 @@ async function getAuthenticatedAdmin(supabase) {
 
   const role = user.user_metadata?.role || user.app_metadata?.role;
   
-  // If role isn't in metadata, look it up from your public profiles table as a fallback
   if (role !== "admin") {
     const { data: profile } = await supabase
       .from("profiles")
@@ -32,13 +31,14 @@ export async function GET() {
   try {
     const cookieStore = await cookies();
     const response = NextResponse.json({ message: "Fetching..." });
+    const allCookies = cookieStore.getAll();
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, // Swapped to your correct key
       {
         cookies: {
-          getAll() { return cookieStore.getAll(); },
+          getAll() { return allCookies; },
           setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value, options }) => {
               cookieStore.set(name, value, options);
@@ -70,13 +70,14 @@ export async function POST(request) {
   try {
     const cookieStore = await cookies();
     const response = NextResponse.json({ message: "Processing..." });
+    const allCookies = cookieStore.getAll();
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, // Swapped to your correct key
       {
         cookies: {
-          getAll() { return cookieStore.getAll(); },
+          getAll() { return allCookies; },
           setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value, options }) => {
               cookieStore.set(name, value, options);
@@ -87,7 +88,6 @@ export async function POST(request) {
       }
     );
 
-    // Assert that the client sending the request is an authentic admin user
     const adminUser = await getAuthenticatedAdmin(supabase);
     const body = await request.json();
 
@@ -104,19 +104,17 @@ export async function POST(request) {
       target_audience: body.target_audience || 'Unisex',
       seo_keywords: body.seo_keywords,
       seo_description: body.seo_description,
-      created_by_admin_id: adminUser.id, // Attaching admin ID securely on server-side
+      created_by_admin_id: adminUser.id,
       updated_at: new Date().toISOString()
     };
 
     let result;
     if (body.id) {
-      // Modify operation
       result = await supabase
         .from("categories")
         .update(payload)
         .eq("id", body.id);
     } else {
-      // Construction operation
       result = await supabase
         .from("categories")
         .insert([payload]);
@@ -138,13 +136,14 @@ export async function DELETE(request) {
   try {
     const cookieStore = await cookies();
     const response = NextResponse.json({ message: "Processing..." });
+    const allCookies = cookieStore.getAll();
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, // Swapped to your correct key
       {
         cookies: {
-          getAll() { return cookieStore.getAll(); },
+          getAll() { return allCookies; },
           setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value, options }) => {
               cookieStore.set(name, value, options);

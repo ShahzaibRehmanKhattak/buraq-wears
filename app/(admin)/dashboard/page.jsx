@@ -78,26 +78,8 @@ export default function App() {
         </main>
       </div>
 
-      {/* Mobile Menu Backdrop & Drawer */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] lg:hidden animate-in fade-in duration-300" onClick={() => setMobileMenuOpen(false)}>
-           <div 
-             className="w-72 h-full bg-white p-6 shadow-2xl animate-in slide-in-from-left duration-300 flex flex-col" 
-             onClick={e => e.stopPropagation()}
-           >
-              <div className="flex justify-between items-center mb-8">
-                <div className="flex flex-col">
-                  <h1 className="text-lg font-bold tracking-tight">IBNA Admin</h1>
-                  <span className="text-[9px] uppercase tracking-widest text-gray-400 font-bold">Commerce Pro</span>
-                </div>
-                <button onClick={() => setMobileMenuOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
-              </div>
-              <button className="flex items-center gap-3 w-full p-4 rounded-xl font-semibold bg-black text-white shadow-lg shadow-black/10">
-                <LayoutGrid size={20} /> Dashboard
-              </button>
-           </div>
-        </div>
-      )}
+      
+     
     </div>
   );
 }
