@@ -29,8 +29,11 @@ function LoginFormContent() {
       // Dynamic Production Routing: Pulls the active production protocol + domain name directly 
       // from the client browser context, cleanly bypassing local hardcoding issues.
       setTimeout(() => {
-        const targetOrigin = typeof window !== 'undefined' ? window.location.origin : '/'
-        window.location.href = targetOrigin
+        if (typeof window !== 'undefined') {
+          // Explicitly fallback to current production domain window parameters
+          const targetOrigin = window.location.origin
+          window.location.href = `${targetOrigin}/dashboard` 
+        }
       }, 1500)
     } else if (hasError) {
       setMessage({
@@ -45,10 +48,18 @@ function LoginFormContent() {
   const handleGoogleSignIn = async () => {
     setMessage({ type: '', text: '' })
     try {
+      if (typeof window === 'undefined') return
+
+      const currentOrigin = window.location.origin
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/login`,
+          // Instructs Supabase to hand off control precisely back to the live domain host origin
+          redirectTo: `${currentOrigin}/login`,
+          queryParams: {
+            prompt: 'select_account' // Forces high fidelity crisp account selection screen
+          }
         },
       })
       if (error) throw error
@@ -78,7 +89,6 @@ function LoginFormContent() {
 
       setMessage({ type: 'success', text: 'Login successful! Redirecting...' })
 
-      // Uses browser origin parameters dynamically for structural shifts
       const origin = window.location.origin
       if (data.role === 'admin') {
         window.location.href = `${origin}/dashboard`
