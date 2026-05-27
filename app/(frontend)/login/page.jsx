@@ -25,8 +25,11 @@ function LoginFormContent() {
 
     if (hasCode || (hashParams && hashParams.get('access_token'))) {
       setMessage({ type: 'success', text: 'Welcome back! Redirecting you securely...' })
-      // Delay briefly so they see the message before going to the home/dashboard
-      setTimeout(() => router.replace('/'), 1500)
+      
+      // Forces a clean hard reload on OAuth callbacks to recalculate structural UI state
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 1500)
     } else if (hasError) {
       setMessage({
         type: 'error',
@@ -73,11 +76,12 @@ function LoginFormContent() {
 
       setMessage({ type: 'success', text: 'Login successful! Redirecting...' })
 
-      // Role-Based Routing logic using the data returned from our server client
+      // Using window.location.href instead of router.push to force a clean site-wide layout refresh.
+      // This immediately mounts the updated identity context parameters straight to the Navbar.
       if (data.role === 'admin') {
-        router.push('/dashboard')
+        window.location.href = '/dashboard'
       } else {
-        router.push('/my-orders')
+        window.location.href = '/my-orders'
       }
 
     } catch (error) {
@@ -195,15 +199,11 @@ function LoginFormContent() {
 export default function LoginPage() {
   return (
     <div className="bg-surface text-on-surface min-h-screen flex flex-col font-sans antialiased">
-   
-
       <main className="flex-grow flex items-center justify-center py-16 px-5">
         <Suspense fallback={<div className="text-sm tracking-widest text-neutral-400">LOADING UI...</div>}>
           <LoginFormContent />
         </Suspense>
       </main>
-
-      
     </div>
   )
 }

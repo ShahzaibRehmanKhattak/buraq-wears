@@ -2,38 +2,44 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 
 export async function middleware(request) {
+  // 1. Create an initial response object so we can mutate headers safely
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   })
 
-  // 1. Initialize Supabase Server Client to manage auth session cookies
+  // 2. Initialize Supabase Server Client to manage auth session cookies cleanly
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     {
       cookies: {
-        get(name) { return request.cookies.get(name)?.value },
+        get(name) { 
+          return request.cookies.get(name)?.value 
+        },
         set(name, value, options) {
+          // Sync with the request object to pass downstream
           request.cookies.set({ name, value, ...options })
-          response = NextResponse.next({ request: { headers: request.headers } })
+          // Instantiate a fresh response object to carry the mutated cookie definitions downstream
+          response = NextResponse.next({ request })
           response.cookies.set({ name, value, ...options })
         },
         remove(name, options) {
           request.cookies.set({ name, value: '', ...options })
-          response = NextResponse.next({ request: { headers: request.headers } })
+          response = NextResponse.next({ request })
           response.cookies.set({ name, value: '', ...options })
         },
       },
     }
   )
 
-  // 2. Fetch the session user securely from Supabase Auth
+  // 3. Fetch the session user securely from Supabase Auth
+  // This explicitly ensures the middleware refreshes expired auth cookies if needed.
   const { data: { user } } = await supabase.auth.getUser()
   const currentPath = request.nextUrl.pathname
 
-  // 3. Define Route Layout Groupings
+  // 4. Define Route Layout Groupings
   const isAuthPage = currentPath === '/login' || currentPath === '/register'
   
   // Admin Panel Paths
@@ -87,10 +93,11 @@ export async function middleware(request) {
     return NextResponse.redirect(url)
   }
 
+  // Return response containing updated cookie mutations
   return response
 }
 
-// 4. Matcher configuration tracking all relevant route segments
+// 5. Matcher configuration tracking all relevant route segments
 export const config = {
   matcher: [
     '/login',
