@@ -17,7 +17,7 @@ function LoginFormContent() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
 
-  // Intercept Google callback patterns if they arrive on the login screen
+  // Intercept Google callback patterns safely across local and production origins
   useEffect(() => {
     const hasCode = searchParams.get('code')
     const hashParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.hash.slice(1)) : null
@@ -26,9 +26,11 @@ function LoginFormContent() {
     if (hasCode || (hashParams && hashParams.get('access_token'))) {
       setMessage({ type: 'success', text: 'Welcome back! Redirecting you securely...' })
       
-      // Forces a clean hard reload on OAuth callbacks to recalculate structural UI state
+      // Dynamic Production Routing: Pulls the active production protocol + domain name directly 
+      // from the client browser context, cleanly bypassing local hardcoding issues.
       setTimeout(() => {
-        window.location.href = '/'
+        const targetOrigin = typeof window !== 'undefined' ? window.location.origin : '/'
+        window.location.href = targetOrigin
       }, 1500)
     } else if (hasError) {
       setMessage({
@@ -76,12 +78,12 @@ function LoginFormContent() {
 
       setMessage({ type: 'success', text: 'Login successful! Redirecting...' })
 
-      // Using window.location.href instead of router.push to force a clean site-wide layout refresh.
-      // This immediately mounts the updated identity context parameters straight to the Navbar.
+      // Uses browser origin parameters dynamically for structural shifts
+      const origin = window.location.origin
       if (data.role === 'admin') {
-        window.location.href = '/dashboard'
+        window.location.href = `${origin}/dashboard`
       } else {
-        window.location.href = '/my-orders'
+        window.location.href = `${origin}/my-orders`
       }
 
     } catch (error) {
@@ -94,7 +96,7 @@ function LoginFormContent() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 max-w-[1200px] w-full mx-auto items-center">
       
-      {/* Left Column Graphic Asset (Identical to Register for Visual Balance) */}
+      {/* Left Column Graphic Asset */}
       <div className="hidden lg:flex lg:col-span-6 h-[520px] bg-[#e8e8e8] rounded-lg overflow-hidden relative group shadow-sm">
         <img 
           alt="Editorial high-fashion" 
