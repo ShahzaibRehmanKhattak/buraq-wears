@@ -28,7 +28,7 @@ import {NewArrivals} from '@/components/NewArrival';
 import Footer from '@/components/Footer';
 import Navbar  from '@/components/Navbar';
 import { useProducts } from "@/hooks/useProducts";
-import { CategoryPills } from "@/components/CategoryPills";
+
 
 const GlobalStyles = () => (
   <>
@@ -97,13 +97,10 @@ return (
       <Navbar />
       <Hero />
       
-      <CategoryPills 
-        activeCategory={activeCategory} 
-        setActiveCategory={setActiveCategory} 
-      />
+   
       
       <ProductSection 
-        title="New Arrivals" 
+        title=" New Arrivals" 
         subtitle="Just landed in the studio"
         items={products} 
       />

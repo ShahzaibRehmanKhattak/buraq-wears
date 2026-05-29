@@ -8,39 +8,37 @@ const supabase = createClient(
 
 export async function GET(request) {
   try {
-    // 1. Extract search parameters from the request URL
     const { searchParams } = new URL(request.url);
     
     let categoryParam = searchParams.get("category");
     const tag = searchParams.get("tag");
     const search = searchParams.get("search");
     const featured = searchParams.get("is_featured"); 
+    const is_active = searchParams.get("is_active");
+    const limit = searchParams.get("limit");
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
 
-    // 2. Initialize your Supabase base query matching your schema flags
-    let query = supabase
-      .from("products")
-      .select("*")
-      .eq("is_active", true); // Maps perfectly to your 'is_active' boolean column
+    // Initialize base query stream mapping your schema flags
+    let query = supabase.from("products").select("*");
 
-    // 3. Apply conditional filters based on your actual schema columns
+    // Apply Active Visibility filter flag (Defaults to true if not specified)
+    if (is_active !== null) {
+      if (is_active === "true") query = query.eq("is_active", true);
+    } else {
+      query = query.eq("is_active", true);
+    }
+
+    // Advanced Flexible Category Parsing (.or syntax matching category_id or sub_category)
     if (categoryParam) {
-      console.log(`📥 [API Raw Input]: "${categoryParam}"`);
-
-      // Clean up the URL encoding parameters safely
       let stage1 = categoryParam.replace(/\+/g, " ");
       let stage2 = decodeURIComponent(stage1);
       let cleanCategoryName = stage2.replace(/\+/g, " ").trim();
       
-      console.log(`🧼 [API Cleaned Output]: Processing search for -> "${cleanCategoryName}"`);
-
       if (cleanCategoryName !== "") {
-        // Split phrase into words to support flexible loose searches
         const words = cleanCategoryName.split(/\s+/).filter(word => word.length > 0);
 
         if (words.length > 0) {
-          // 🎯 THE SCHEMA FIX: 
-          // We map the search terms to check 'category_id' OR 'sub_category' 
-          // using valid, double-quoted PostgREST text strings.
           const conditions = [];
           words.forEach(word => {
             conditions.push(`category_id.ilike."%${word}%"`);
@@ -48,8 +46,6 @@ export async function GET(request) {
           });
 
           const orQueryCondition = conditions.join(",");
-
-          console.log(`⛓️ [Generated Schema Condition]: .or("${orQueryCondition}")`);
           query = query.or(orQueryCondition);
         }
       }
@@ -70,12 +66,20 @@ export async function GET(request) {
       query = query.ilike("title", `%${search}%`);
     }
 
-    // 4. Handle default ordering using your 'created_at' timestamp column
+    // Handle default ordering using your 'created_at' timestamp column
     query = query.order("created_at", { ascending: false });
 
-    // 5. Execute the constructed query
-    const { data, error } = await query;
+    // Explicit Range Pagination checks take total precedence over static limits
+    if (from !== null && to !== null && from !== "" && to !== "") {
+      query = query.range(Number(from), Number(to));
+    } else if (limit && limit !== "") {
+      query = query.limit(Number(limit));
+    } else {
+      query = query.limit(12); 
+    }
 
+    // Execute constructed PostgREST query
+    const { data, error } = await query;
     if (error) throw error;
 
     return NextResponse.json({ success: true, data: data || [] }, { status: 200 });

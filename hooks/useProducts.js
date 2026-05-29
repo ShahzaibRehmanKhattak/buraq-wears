@@ -1,51 +1,64 @@
 "use client";
-import { useState, useEffect } from "react";
 
-export function useProducts(filters = {}) {
+import { useState, useEffect, useCallback } from "react";
+
+export function useProducts({ category = "", search = "", limit = 12 } = {}) {
   const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]); // Holds all unique categories for navigation
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
+  const [hasMore, setHasMore] = useState(true);
 
-  // Stringify filters so useEffect can accurately compare structural changes
-  const filterString = JSON.stringify(filters);
+  const batchSize = Number(limit) || 12;
 
   useEffect(() => {
     let isMounted = true;
 
-    async function fetchData() {
+    async function fetchInitialData() {
+      // 🎯 FORCE TRIGGER THE LOADING EFFECT IMMEDIATELY
       setLoading(true);
       setError(null);
-      try {
-        // 1. Build query parameters dynamically for the filtered products request
-        const params = new URLSearchParams();
-        Object.entries(filters).forEach(([key, value]) => {
-          if (value !== undefined && value !== null && value !== "") {
-            params.append(key, String(value));
-          }
-        });
+      setHasMore(true);
 
-        // 2. Fire requests concurrently: 
-        // Always fetch the unfiltered master list of products to extract all unique categories,
-        // while simultaneously fetching the filtered product subset for the grid display.
+      try {
+        const params = new URLSearchParams();
+        
+        // 🎯 MAP FRONTEND KEYS TO BACKEND SCHEMA: 
+        // If 'category' exists, map it to 'category_id' which your database/API expects
+        if (category) {
+          params.append("category_id", category.toLowerCase().trim());
+        }
+        
+        if (search) {
+          params.append("search", search.trim());
+        }
+
+        // Setup base pagination range
+        params.append("from", "0");
+        params.append("to", String(batchSize - 1));
+
         const [filteredRes, masterRes] = await Promise.all([
           fetch(`/api/clients/products?${params.toString()}`),
-          fetch("/api/clients/products") // Static base route to ensure pills never vanish
+          fetch("/api/clients/products") // Static backend unique categories collector
         ]);
 
         const filteredJson = await filteredRes.json();
         const masterJson = await masterRes.json();
 
-        if (!filteredJson.success) throw new Error(filteredJson.error || "Failed to fetch filtered products");
-        if (!masterJson.success) throw new Error(masterJson.error || "Failed to fetch categories list");
+        if (!filteredJson.success) throw new Error(filteredJson.error || "Failed filtering archives");
+        if (!masterJson.success) throw new Error(masterJson.error || "Failed indexing global metrics");
 
         if (isMounted) {
-          // Set the dynamically filtered products for your grid view
-          setProducts(filteredJson.data);
+          setProducts(filteredJson.data || []);
+          
+          if ((filteredJson.data || []).length < batchSize) {
+            setHasMore(false);
+          }
 
-          // Extract all global unique categories from the unfiltered master data set
+          // Gather unique categories dynamically from the complete stock response list
           const uniqueCats = [
-            ...new Set(masterJson.data.map((p) => p.category).filter(Boolean))
+            ...new Set(masterJson.data?.map((p) => p.category_id || p.category).filter(Boolean))
           ];
           setCategories(uniqueCats);
         }
@@ -60,12 +73,48 @@ export function useProducts(filters = {}) {
       }
     }
 
-    fetchData();
+    fetchInitialData();
 
     return () => {
       isMounted = false;
     };
-  }, [filterString]);
+    // 🎯 RE-RUN ON PREDICTABLE CHANGES (Primitives, not an unstable object reference)
+  }, [category, search, batchSize]);
 
-  return { products, categories, loading, error };
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+
+    try {
+      const fromIndex = products.length;
+      const toIndex = fromIndex + batchSize - 1;
+
+      const params = new URLSearchParams();
+      if (category) params.append("category_id", category.toLowerCase().trim());
+      if (search) params.append("search", search.trim());
+      
+      params.append("from", String(fromIndex));
+      params.append("to", String(toIndex));
+
+      const res = await fetch(`/api/clients/products?${params.toString()}`);
+      const json = await res.json();
+
+      if (!json.success) throw new Error(json.error || "Failed parsing next chunk");
+
+      if (json.data && json.data.length > 0) {
+        setProducts((prev) => [...prev, ...json.data]);
+        if (json.data.length < batchSize) {
+          setHasMore(false);
+        }
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("💥 Infinite pagination engine failed:", err.message);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [products.length, category, search, loadingMore, hasMore, batchSize]);
+
+  return { products, categories, loading, loadingMore, hasMore, loadMore, error };
 }

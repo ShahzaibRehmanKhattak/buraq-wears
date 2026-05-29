@@ -1,69 +1,72 @@
-"use client";
+'use client';
+
 import React from "react";
-import { useProducts } from "@/hooks/useProducts";
+import { useCategories } from "@/hooks/useCategories";
+import { CategoryCard } from "./CategoryCard";
+import { LayoutGrid, Layers, Shirt, Scissors, ShoppingBag, Tag } from "lucide-react";
 
-// A small sub-component to safely manage independent state hooks per category card
-const CategoryCard = ({ title, img, filterParams }) => {
-  // Use our hook passing specific parameters (e.g., { category: "accessories" } or { tag: "new-arrivals" })
-  const { products, loading } = useProducts(filterParams);
+export const CuratedCategories = ({ activeCategory, onCategorySelect }) => {
+  const { categories, loading, error } = useCategories();
 
-  // Compute the live items length dynamically once loaded
-  const itemCountText = loading ? "Loading..." : `${products.length} Items`;
+  const getCategoryIcon = (name) => {
+    const lowerName = name?.toLowerCase() || '';
+    if (lowerName.includes('all')) return LayoutGrid;
+    if (lowerName.includes('hoodie') || lowerName.includes('sweater')) return Layers;
+    if (lowerName.includes('shirt') || lowerName.includes('tee')) return Shirt;
+    if (lowerName.includes('pant') || lowerName.includes('bottom')) return Scissors;
+    if (lowerName.includes('jacket') || lowerName.includes('outerwear')) return ShoppingBag;
+    return Tag;
+  };
+
+  if (loading && (!categories || categories.length === 0)) {
+    return (
+      <div className="w-full py-4 px-4 sm:px-6">
+        <div className="flex flex-row gap-2 overflow-x-auto pb-2">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-10 w-28 rounded-full bg-neutral-100 animate-pulse shrink-0" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) return null;
 
   return (
-    <div className="group cursor-pointer">
-      <div className="aspect-[3/4] bg-surface-container overflow-hidden mb-6">
-        <img 
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
-          src={img} 
-          alt={title} 
+    <nav className="w-full border-b border-neutral-100 bg-white p-4 sm:px-6 z-10">
+      {/* Forced into a strict single horizontal row on ALL screen sizes (flex-row on mobile and desktop).
+        `scrollbar-none` hides the native scrollbar while keeping the swiping functionality perfectly clean.
+      */}
+      <div className="flex flex-row items-center gap-2 overflow-x-auto pb-1 scrollbar-none snap-x w-full">
+        
+        {/* Default Reset Option */}
+        <CategoryCard 
+          title="All Styles"
+          icon={LayoutGrid}
+          isActive={!activeCategory}
+          onClick={() => onCategorySelect("")}
         />
-      </div>
-      <h4 className="font-headline-md text-headline-md mb-2">{title}</h4>
-      <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">
-        {itemCountText}
-      </span>
-    </div>
-  );
-};
 
-export const CuratedCategories = () => {
-  // Define configuration mapping your display titles to database parameters
-  const categoriesConfig = [
-    { 
-      title: "Accessories", 
-      img: "https://lh3.googleusercontent.com/aida-public/AB6AXuAn_WuGTplxg11BR_V6jhv-adaVfA0MqkkdlHS3M1QcZ2NpW1oDW6FoLQTHirIFwL3klQ5wkPM15Es4uT7tWshvA__ahs8aUijajWIa93_77AIkiBNQ0pa8SGmj8rsZZrMk6aq01A4hXvM3391YtOLHZwJO640bwNFtWkfxlpH8OdzqbkbpdsTuexSLbUpfWVflmb3GqNJvP24PP_F6dxVOu2XbtkX--lejzfVYOf0lSobP1y0B3Qp8YxqhtPaEOERfpUJKMeyCOQ",
-      filterParams: { category: "accessories" } // Checks: ?category=accessories
-    },
-    { 
-      title: "New Arrivals", 
-      img: "https://lh3.googleusercontent.com/aida-public/AB6AXuCj3S67TWsu4rQHKIGHD-Wxy1JQXnYoIwP9qIZNfGUv_eK_b2pByx6u5unuGM1GpB6GVCzVfszCXFgFmgHlW35pGb9kVbvQxuLRpW9ns4wu6GZOmugzVAz9ImQ8nlkHciGU5DrmvsKD68WEMWp0572ka0QJ24linfVA00M_54QvkgSxDxhAr8_A7ETw0lcj2ha_fN7Jq2PRuJ9wGTKoDk0QVvDz5MluRpAM_y2jd28H-Dft6AF3Wvn_KtOpFjDDYdZeASmKgKbBUQ",
-      filterParams: { tag: "new-arrival" } // Checks: ?tag=new-arrival
-    },
-    { 
-      title: "Tailoring", 
-      img: "https://lh3.googleusercontent.com/aida-public/AB6AXuD0Nz5ENJAlRBvU0KjnMZ7uQJmi7R29x6-kkK334vKEfj4fOQFRveHF1QIU18EbQJfsM4GK0cVmMqWubqsgEOj4__CxsqO6Ie_423yO6QplIBYxID0fATTDHtdG8O3qMkjbrK81tfloEz-8YPCyrHJ_k_-3b2fHZd6QfuXpuaZt3QsP2cu95IM_gU4ejJTB2dU79Zzzu_Tz3fRsJnETyJa0uk3mCMciJys6-APW9nYTk-a4YuO7oVp_AbSU6SBOl-_hzDfkEIOzAw",
-      filterParams: { category: "tailoring" } // Checks: ?category=tailoring
-    }
-  ];
+        {/* Dynamic Database Mapping */}
+        {categories?.map((cat, i) => {
+          const displayName = cat && typeof cat === "object" ? (cat.name || cat.title) : String(cat);
+          
+          if (!displayName || displayName === "undefined" || displayName === "#") return null;
 
-  return (
-    <section className="mt-40">
-      <div className="flex justify-between items-end mb-12">
-        <h3 className="font-headline-lg text-headline-lg">Curated Categories</h3>
-        <a className="font-label-lg text-label-lg uppercase border-b border-outline" href="#">View All</a>
+          const dbValue = displayName.toLowerCase().trim();
+          const isCurrentlyActive = activeCategory?.toLowerCase() === dbValue;
+
+          return (
+            <CategoryCard 
+              key={`${dbValue}-${i}`}
+              title={displayName}
+              icon={getCategoryIcon(displayName)}
+              isActive={isCurrentlyActive}
+              onClick={() => onCategorySelect(dbValue)}
+            />
+          );
+        })}
       </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
-        {categoriesConfig.map((cat, i) => (
-          <CategoryCard 
-            key={i}
-            title={cat.title}
-            img={cat.img}
-            filterParams={cat.filterParams}
-          />
-        ))}
-      </div>
-    </section>
+    </nav>
   );
 };
