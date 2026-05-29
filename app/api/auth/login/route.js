@@ -1,179 +1,121 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+import { NextResponse } from 'next/server'
 
-// Secure internal helper to assert admin user identity and return account details
-async function getAuthenticatedAdmin(supabase) {
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) {
-    throw new Error("Unauthorized: Active login session required.");
-  }
-
-  const role = user.user_metadata?.role || user.app_metadata?.role;
+// ==========================================
+// 1. GET HANDLER: Google OAuth Callback
+// ==========================================
+export async function GET(request) {
+  const { searchParams, origin } = new URL(request.url)
+  const code = searchParams.get('code')
   
-  // If role isn't in metadata, look it up from your public profiles table as a fallback
-  if (role !== "admin") {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+  // Fallback gracefully if the OAuth code is missing
+  if (!code) {
+    return NextResponse.redirect(`${origin}/login?error=Missing authentication code`)
+  }
 
-    if (!profile || profile.role !== "admin") {
-      throw new Error("Forbidden: This endpoint requires an admin role.");
+  const cookieStore = await cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    {
+      cookies: {
+        get(name) { return cookieStore.get(name)?.value },
+        set(name, value, options) { cookieStore.set({ name, value, ...options }) },
+        remove(name, options) { cookieStore.set({ name, value: '', ...options }) },
+      },
     }
+  )
+
+  // Exchange the temporary code for a secure, cookie-backed session
+  const { data: authData, error: authError } = await supabase.auth.exchangeCodeForSession(code)
+
+  if (authError) {
+    console.error('OAuth Code Exchange Error:', authError.message)
+    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(authError.message)}`)
   }
 
-  return user;
-}
-
-// 1. GET: Fetch all category classification nodes
-export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const response = NextResponse.json({ message: "Fetching..." });
+    // Look up the user profile role from your database
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', authData.user?.id)
+      .single()
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-              response.cookies.set(name, value, options);
-            });
-          }
-        }
-      }
-    );
-
-    const { data, error } = await supabase
-      .from("categories")
-      .select("*")
-      .order("display_priority", { ascending: false });
-
-    if (error) throw error;
-
-    return new NextResponse(JSON.stringify({ success: true, data }), {
-      status: 200,
-      headers: response.headers
-    });
+    // Redirect to the correct workspace dynamically on the server side
+    if (profile?.role === 'admin') {
+      return NextResponse.redirect(`${origin}/dashboard`)
+    }
+    return NextResponse.redirect(`${origin}/my-orders`)
+    
   } catch (err) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error('Profile parsing crashed on callback:', err)
+    return NextResponse.redirect(`${origin}/my-orders`)
   }
 }
 
-// 2. POST: Create or Update a Category Node
+// ==========================================
+// 2. POST HANDLER: Email & Password Sign In
+// ==========================================
 export async function POST(request) {
   try {
-    const cookieStore = await cookies();
-    const response = NextResponse.json({ message: "Processing..." });
+    const { email, password } = await request.json()
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-              response.cookies.set(name, value, options);
-            });
-          }
-        }
-      }
-    );
-
-    // Assert that the client sending the request is an authentic admin user
-    const adminUser = await getAuthenticatedAdmin(supabase);
-    const body = await request.json();
-
-    const payload = {
-      name: body.name,
-      slug: body.slug,
-      description: body.description,
-      volume_units: Number(body.volume_units) || 0,
-      is_active: Boolean(body.is_active),
-      is_featured: Boolean(body.is_featured),
-      image_url: body.image_url,
-      classification_node: body.classification_node || 'Parent Category',
-      display_priority: Number(body.display_priority) || 0,
-      target_audience: body.target_audience || 'Unisex',
-      seo_keywords: body.seo_keywords,
-      seo_description: body.seo_description,
-      created_by_admin_id: adminUser.id, // Attaching admin ID securely on server-side
-      updated_at: new Date().toISOString()
-    };
-
-    let result;
-    if (body.id) {
-      // Modify operation
-      result = await supabase
-        .from("categories")
-        .update(payload)
-        .eq("id", body.id);
-    } else {
-      // Construction operation
-      result = await supabase
-        .from("categories")
-        .insert([payload]);
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: 'Email and password are required.' },
+        { status: 400 }
+      )
     }
 
-    if (result.error) throw result.error;
-
-    return new NextResponse(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: response.headers
-    });
-  } catch (err) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 400 });
-  }
-}
-
-// 3. DELETE: Drop a target row node
-export async function DELETE(request) {
-  try {
-    const cookieStore = await cookies();
-    const response = NextResponse.json({ message: "Processing..." });
-
+    const cookieStore = await cookies()
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
       {
         cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-              response.cookies.set(name, value, options);
-            });
-          }
-        }
+          get(name) { return cookieStore.get(name)?.value },
+          set(name, value, options) { cookieStore.set({ name, value, ...options }) },
+          remove(name, options) { cookieStore.set({ name, value: '', ...options }) },
+        },
       }
-    );
+    )
 
-    await getAuthenticatedAdmin(supabase);
+    // Authenticate credentials against Supabase engine
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
     
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: 400 })
+    }
 
-    if (!id) throw new Error("Missing required query element parameter: id");
+    // Pull role permissions configuration
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', authData.user.id)
+      .single()
+  
+    if (profileError || !profile) {
+      return NextResponse.json({ 
+        message: 'Login successful', 
+        role: 'customer' 
+      }, { status: 200 })
+    }
 
-    const { error } = await supabase
-      .from("categories")
-      .delete()
-      .eq("id", id);
+    return NextResponse.json({ 
+      message: 'Login successful!', 
+      role: profile.role 
+    }, { status: 200 })
 
-    if (error) throw error;
-
-    return new NextResponse(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: response.headers
-    });
   } catch (err) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 400 });
+    console.error("Login API Crash Details:", err)
+    return NextResponse.json(
+      { error: 'Something went wrong on our servers. Please try again later.' },
+      { status: 500 }
+    )
   }
 }

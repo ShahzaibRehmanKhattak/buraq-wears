@@ -55,10 +55,10 @@ function LoginFormContent() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // Instructs Supabase to hand off control precisely back to the live domain host origin
-          redirectTo: `${currentOrigin}/login`,
+          // Points directly to your unified API route handler (GET method)
+          redirectTo: `${currentOrigin}/api/auth`,
           queryParams: {
-            prompt: 'select_account' // Forces high fidelity crisp account selection screen
+            prompt: 'select_account' // Forces the Google account picker to show up cleanly
           }
         },
       })
@@ -75,7 +75,7 @@ function LoginFormContent() {
     setMessage({ type: '', text: '' })
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -122,7 +122,7 @@ function LoginFormContent() {
       {/* Right Column Layout Form Area */}
       <div className="lg:col-span-6 flex flex-col justify-center max-w-[400px] mx-auto w-full">
         <div className="mb-8 text-center lg:text-left">
-          <h1 className="text-3xl font-semibold text-primary mb-2 tracking-tight">Welcome Back</h1>
+          <h1 className="text-3xl font-semibold text-black mb-2 tracking-tight">Welcome Back</h1>
           <p className="text-sm text-[#4c4546]">Sign in to access your dashboard, orders, and custom settings.</p>
         </div>
 
@@ -141,7 +141,7 @@ function LoginFormContent() {
         <button 
           type="button"
           onClick={handleGoogleSignIn}
-          className="w-full h-12 border border-[#cfc4c5] flex items-center justify-center gap-3 hover:bg-[#eeeeee] transition-all duration-200 active:scale-95 text-xs font-semibold tracking-wider text-primary uppercase"
+          className="w-full h-12 border border-[#cfc4c5] bg-white flex items-center justify-center gap-3 hover:bg-[#eeeeee] transition-all duration-200 active:scale-95 text-xs font-semibold tracking-wider text-black uppercase"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
@@ -167,7 +167,7 @@ function LoginFormContent() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full h-11 px-4 border border-[#cfc4c5] bg-surface focus:border-black focus:ring-0 transition-colors outline-none text-sm placeholder-[#7e7576]" 
+              className="w-full h-11 px-4 border border-[#cfc4c5] bg-white text-black focus:border-black focus:ring-0 transition-colors outline-none text-sm placeholder-[#7e7576]" 
               placeholder="alexander@ibna.com" 
             />
           </div>
@@ -182,7 +182,7 @@ function LoginFormContent() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full h-11 px-4 border border-[#cfc4c5] bg-surface focus:border-black focus:ring-0 transition-colors outline-none text-sm placeholder-[#7e7576]" 
+              className="w-full h-11 px-4 border border-[#cfc4c5] bg-white text-black focus:border-black focus:ring-0 transition-colors outline-none text-sm placeholder-[#7e7576]" 
               placeholder="••••••••" 
             />
           </div>
@@ -210,7 +210,8 @@ function LoginFormContent() {
 
 export default function LoginPage() {
   return (
-    <div className="bg-surface text-on-surface min-h-screen flex flex-col font-sans antialiased">
+    // Replaced baseline bg-surface with explicit bg-[#fafafa] to lock light style across both desktops & phones
+    <div className="bg-[#fafafa] text-black min-h-screen flex flex-col font-sans antialiased">
       <main className="flex-grow flex items-center justify-center py-16 px-5">
         <Suspense fallback={<div className="text-sm tracking-widest text-neutral-400">LOADING UI...</div>}>
           <LoginFormContent />
