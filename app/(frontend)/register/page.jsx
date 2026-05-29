@@ -19,6 +19,7 @@ function RegisterFormContent() {
   const [message, setMessage] = useState({ type: '', text: '' })
 
   // Intercept Google callback patterns directly on client-side mounting
+// Intercept Google callback patterns directly on client-side mounting
   useEffect(() => {
     const hasCode = searchParams.get('code')
     const hashParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.hash.slice(1)) : null
@@ -27,9 +28,17 @@ function RegisterFormContent() {
     if (hasCode || (hashParams && hashParams.get('access_token'))) {
       setMessage({
         type: 'success',
-        text: 'Google account verified successfully! Please visit the login page to login.'
+        text: 'Google account verified successfully! Redirecting to home page...'
       })
-      router.replace('/register')
+      
+      // Delay redirection by 2 seconds so the user can read the success text
+      const timer = setTimeout(() => {
+        router.replace('/')
+      }, 2000)
+
+      // Clean up the timer if the component unmounts during the delay
+      return () => clearTimeout(timer)
+
     } else if (hasError) {
       setMessage({
         type: 'error',
@@ -38,7 +47,6 @@ function RegisterFormContent() {
       router.replace('/register')
     }
   }, [searchParams, router])
-
   // Google Social Sign Up
   const handleGoogleSignIn = async () => {
     setMessage({ type: '', text: '' })
@@ -106,7 +114,7 @@ function RegisterFormContent() {
       {/* Right Column Registration Form Context */}
       <div className="lg:col-span-6 flex flex-col justify-center max-w-[400px] mx-auto w-full">
         <div className="mb-8 text-center lg:text-left">
-          <h1 className="text-3xl font-semibold text-primary mb-2 tracking-tight">Join the Circle</h1>
+          <h1 className="text-3xl font-semibold text-black mb-2 tracking-tight">Join the Circle</h1>
           <p className="text-sm text-[#4c4546]">Unlock exclusive collections and a seamless checkout experience.</p>
         </div>
 
@@ -132,7 +140,7 @@ function RegisterFormContent() {
         <button 
           type="button"
           onClick={handleGoogleSignIn}
-          className="w-full h-12 border border-[#cfc4c5] flex items-center justify-center gap-3 hover:bg-[#eeeeee] transition-all duration-200 active:scale-95 text-xs font-semibold tracking-wider text-primary uppercase"
+          className="w-full h-12 border border-[#cfc4c5] bg-white flex items-center justify-center gap-3 hover:bg-[#eeeeee] transition-all duration-200 active:scale-95 text-xs font-semibold tracking-wider text-black uppercase"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
@@ -158,7 +166,7 @@ function RegisterFormContent() {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full h-11 px-4 border border-[#cfc4c5] bg-surface focus:border-black focus:ring-0 transition-colors outline-none text-sm placeholder-[#7e7576]" 
+              className="w-full h-11 px-4 border border-[#cfc4c5] bg-white text-black focus:border-black focus:ring-0 transition-colors outline-none text-sm placeholder-[#7e7576]" 
               placeholder="ALEXANDER VOGUE" 
             />
           </div>
@@ -170,7 +178,7 @@ function RegisterFormContent() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full h-11 px-4 border border-[#cfc4c5] bg-surface focus:border-black focus:ring-0 transition-colors outline-none text-sm placeholder-[#7e7576]" 
+              className="w-full h-11 px-4 border border-[#cfc4c5] bg-white text-black focus:border-black focus:ring-0 transition-colors outline-none text-sm placeholder-[#7e7576]" 
               placeholder="alexander@ibna.com" 
             />
           </div>
@@ -182,7 +190,7 @@ function RegisterFormContent() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full h-11 px-4 border border-[#cfc4c5] bg-surface focus:border-black focus:ring-0 transition-colors outline-none text-sm placeholder-[#7e7576]" 
+              className="w-full h-11 px-4 border border-[#cfc4c5] bg-white text-black focus:border-black focus:ring-0 transition-colors outline-none text-sm placeholder-[#7e7576]" 
               placeholder="••••••••" 
             />
           </div>
@@ -216,16 +224,12 @@ function RegisterFormContent() {
 
 export default function RegisterPage() {
   return (
-    <div className="bg-surface text-on-surface min-h-screen flex flex-col font-sans antialiased">
-     
-
-      <main className="flex-grow flex items-center justify-center py-16 px-5v mt-10">
-        <Suspense fallback={<div className="text-sm tracking-widest text-neutral-400 " >LOADING UI...</div>}>
+    <div className="bg-[#fafafa] text-black min-h-screen flex flex-col font-sans antialiased">
+      <main className="flex-grow flex items-center justify-center py-16 px-5 mt-10">
+        <Suspense fallback={<div className="text-sm tracking-widest text-neutral-400">LOADING UI...</div>}>
           <RegisterFormContent />
         </Suspense>
       </main>
-
-    
     </div>
   )
 }

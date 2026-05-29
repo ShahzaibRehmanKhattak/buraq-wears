@@ -56,7 +56,7 @@ function LoginFormContent() {
         provider: 'google',
         options: {
           // Points directly to your unified API route handler (GET method)
-          redirectTo: `${currentOrigin}/api/auth`,
+          redirectTo: `${currentOrigin}/`,
           queryParams: {
             prompt: 'select_account' // Forces the Google account picker to show up cleanly
           }
@@ -75,7 +75,7 @@ function LoginFormContent() {
     setMessage({ type: '', text: '' })
 
     try {
-      const response = await fetch('/api/auth', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
