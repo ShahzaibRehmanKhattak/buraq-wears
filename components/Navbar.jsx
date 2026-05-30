@@ -98,7 +98,7 @@ export default function Navbar() {
     { label: 'Shirts', path: '/shirts' },
     { label: 'Trousers', path: '/trousers' },
     { label: 'Accessories', path: '/accessories' },
-    { label: 'Atelier', path: '/atelier' }
+   
   ];
 
   const isAdmin = userRole === 'admin' && !isSyncing;

@@ -2,31 +2,23 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-// Secure internal helper to assert admin user identity and return account details
+// Secure internal helper to assert admin user identity
 async function getAuthenticatedAdmin(supabase) {
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) {
     throw new Error("Unauthorized: Active login session required.");
   }
-
   const role = user.user_metadata?.role || user.app_metadata?.role;
-  
   if (role !== "admin") {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
     if (!profile || profile.role !== "admin") {
       throw new Error("Forbidden: This endpoint requires an admin role.");
     }
   }
-
   return user;
 }
 
-// 1. GET: Fetch active product listings (with optional page-specific filtering) ordered by creation timestamp
+// 1. GET: Unified pipeline for page filtering, search, and infinite pagination
 export async function GET(request) {
   try {
     const cookieStore = await cookies();
@@ -49,25 +41,45 @@ export async function GET(request) {
       }
     );
 
-    // Read an optional targeted 'page' value from the URL query parameters (e.g. /api/products?page=trousers)
+    // Parse incoming system search queries and query ranges
     const { searchParams } = new URL(request.url);
     const targetPage = searchParams.get("page");
+    const searchQuery = searchParams.get("search");
+    const limit = parseInt(searchParams.get("limit") || "12", 10);
+    const offset = parseInt(searchParams.get("offset") || "0", 10);
 
-    let query = supabase.from("products").select("*");
+    // Use a lightweight reference to build conditions cleanly
+    let query = supabase.from("products").select("*", { count: "exact" });
 
-    // If a specific page value is provided, filter rows accordingly
+    // Condition A: Route Isolation Filter
     if (targetPage) {
       query = query.eq("page", targetPage.toLowerCase().trim());
     }
 
-    const { data, error } = await query.order("created_at", { ascending: false });
+    // Condition B: Targeted ILIKE Search (matches title pattern inside the isolated channel page)
+    if (searchQuery) {
+      query = query.ilike("title", `%${searchQuery.trim()}%`);
+    }
+
+    // Condition C: Offset Pagination Matrix
+    const { data, error, count } = await query
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
-    return new NextResponse(JSON.stringify({ success: true, data }), {
-      status: 200,
-      headers: response.headers
-    });
+    // Returns data along with a metadata tracker to verify if more items remain to be loaded
+    return new NextResponse(
+      JSON.stringify({
+        success: true,
+        data,
+        meta: {
+          totalCount: count,
+          hasMore: offset + limit < count
+        }
+      }),
+      { status: 200, headers: response.headers }
+    );
   } catch (err) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
@@ -103,7 +115,7 @@ export async function POST(request) {
       title: body.title,
       slug: body.slug,
       sku: body.sku,
-      page: body.page ? String(body.page).toLowerCase().trim() : null, // Added page configuration here
+      page: body.page ? String(body.page).toLowerCase().trim() : null,
       barcode: body.barcode || null,
       brand: body.brand || null,
       description: body.description,
@@ -136,17 +148,10 @@ export async function POST(request) {
       updated_at: new Date().toISOString()
     };
 
-    const { data, error } = await supabase
-      .from("products")
-      .insert([payload])
-      .select();
-
+    const { data, error } = await supabase.from("products").insert([payload]).select();
     if (error) throw error;
 
-    return new NextResponse(JSON.stringify({ success: true, data }), {
-      status: 201,
-      headers: response.headers
-    });
+    return new NextResponse(JSON.stringify({ success: true, data }), { status: 201, headers: response.headers });
   } catch (err) {
     return NextResponse.json({ success: false, error: err.message }, { status: 400 });
   }
@@ -178,15 +183,13 @@ export async function PUT(request) {
     const adminUser = await getAuthenticatedAdmin(supabase);
     const body = await request.json();
 
-    if (!body.id) {
-      throw new Error("Missing required body parameters element target: id");
-    }
+    if (!body.id) throw new Error("Missing required body parameters element target: id");
 
     const payload = {
       title: body.title,
       slug: body.slug,
       sku: body.sku,
-      page: body.page ? String(body.page).toLowerCase().trim() : null, // Added page update capability here
+      page: body.page ? String(body.page).toLowerCase().trim() : null,
       barcode: body.barcode || null,
       brand: body.brand || null,
       description: body.description,
@@ -219,18 +222,10 @@ export async function PUT(request) {
       updated_at: new Date().toISOString()
     };
 
-    const { data, error } = await supabase
-      .from("products")
-      .update(payload)
-      .eq("id", body.id)
-      .select();
-
+    const { data, error } = await supabase.from("products").update(payload).eq("id", body.id).select();
     if (error) throw error;
 
-    return new NextResponse(JSON.stringify({ success: true, data }), {
-      status: 200,
-      headers: response.headers
-    });
+    return new NextResponse(JSON.stringify({ success: true, data }), { status: 200, headers: response.headers });
   } catch (err) {
     return NextResponse.json({ success: false, error: err.message }, { status: 400 });
   }
@@ -266,17 +261,10 @@ export async function DELETE(request) {
 
     if (!id) throw new Error("Missing required query element parameter: id");
 
-    const { error } = await supabase
-      .from("products")
-      .delete()
-      .eq("id", id);
-
+    const { error } = await supabase.from("products").delete().eq("id", id);
     if (error) throw error;
 
-    return new NextResponse(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: response.headers
-    });
+    return new NextResponse(JSON.stringify({ success: true }), { status: 200, headers: response.headers });
   } catch (err) {
     return NextResponse.json({ success: false, error: err.message }, { status: 400 });
   }

@@ -10,10 +10,10 @@ export function ProductModal({ isOpen, onClose, onSave, product = null, categori
   
   const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
 
-  // Expanded State Matrix matching all new DB fields
+  // Expanded State Matrix matching all new DB fields (including page)
   const [formData, setFormData] = useState({
     title: '', slug: '', sku: '', barcode: '', brand: '',
-    category_id: '', sub_category: '', tags: '',
+    category_id: '', sub_category: '', tags: '', page: '',
     short_description: '', description: '', specifications: '',
     price: '', compare_at_price: '', cost_per_item: '', discount_price: '', badge_text: '',
     stock_qty: '', availability: 'In Stock',
@@ -54,6 +54,7 @@ export function ProductModal({ isOpen, onClose, onSave, product = null, categori
         category_id: product.category_id ? String(product.category_id) : '',
         sub_category: product.sub_category || '',
         tags: product.tags || '',
+        page: product.page || '', 
         short_description: product.short_description || '',
         description: product.description || '',
         specifications: product.specifications || '',
@@ -79,10 +80,9 @@ export function ProductModal({ isOpen, onClose, onSave, product = null, categori
         is_featured: product.is_featured !== undefined ? product.is_featured : false
       });
     } else {
-      // Reset form
       setFormData({
         title: '', slug: '', sku: '', barcode: '', brand: '',
-        category_id: '', sub_category: '', tags: '',
+        category_id: '', sub_category: '', tags: '', page: '', 
         short_description: '', description: '', specifications: '',
         price: '', compare_at_price: '', cost_per_item: '', discount_price: '', badge_text: '',
         stock_qty: '', availability: 'In Stock',
@@ -147,6 +147,7 @@ export function ProductModal({ isOpen, onClose, onSave, product = null, categori
     const normalizedPayload = {
       ...formData,
       category_id: formData.category_id ? String(formData.category_id).trim() : 'categories',
+      page: formData.page ? String(formData.page).toLowerCase().trim() : null, 
       price: parseFloat(formData.price) || 0,
       compare_at_price: formData.compare_at_price ? parseFloat(formData.compare_at_price) : null,
       cost_per_item: formData.cost_per_item ? parseFloat(formData.cost_per_item) : null,
@@ -209,7 +210,17 @@ export function ProductModal({ isOpen, onClose, onSave, product = null, categori
                 {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
               </select>
             </div>
-            <div><label className={labelStyle}>Sub Category</label><input type="text" className={inputStyle} placeholder="e.g. Men / T-Shirts" value={formData.sub_category} onChange={e => setFormData({...formData, sub_category: e.target.value})} /></div>
+            <div>
+              <label className={labelStyle}>Target Page Channel</label>
+              <select className={inputStyle} value={formData.page} onChange={e => setFormData({...formData, page: e.target.value})}>
+                <option value="">Unassigned (Null)</option>
+                <option value="home">Home Page</option>
+                <option value="shirts">Shirts Page</option>
+                <option value="trousers">Trousers Page</option>
+                <option value="accessories">Accessories Page</option>
+                <option value="atelier">Atelier Page</option>
+              </select>
+            </div>
             <div><label className={labelStyle}>Availability Status</label>
               <select className={inputStyle} value={formData.availability} onChange={e => setFormData({...formData, availability: e.target.value})}>
                 <option value="In Stock">In Stock</option>
@@ -217,9 +228,10 @@ export function ProductModal({ isOpen, onClose, onSave, product = null, categori
                 <option value="Pre-Order">Pre-Order</option>
               </select>
             </div>
+            <div><label className={labelStyle}>Sub Category</label><input type="text" className={inputStyle} placeholder="e.g. Men / T-Shirts" value={formData.sub_category} onChange={e => setFormData({...formData, sub_category: e.target.value})} /></div>
             <div><label className={labelStyle}>SKU Code</label><input type="text" className={inputStyle} value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} /></div>
             <div><label className={labelStyle}>Barcode</label><input type="text" className={inputStyle} value={formData.barcode} onChange={e => setFormData({...formData, barcode: e.target.value})} /></div>
-            <div><label className={labelStyle}>Stock Quantity *</label><input required type="number" min="0" className={inputStyle} value={formData.stock_qty} onChange={e => setFormData({...formData, stock_qty: e.target.value})} /></div>
+            <div className="col-span-3"><label className={labelStyle}>Stock Quantity *</label><input required type="number" min="0" className={inputStyle} value={formData.stock_qty} onChange={e => setFormData({...formData, stock_qty: e.target.value})} /></div>
           </div>
 
           {/* PRICING SECTION */}

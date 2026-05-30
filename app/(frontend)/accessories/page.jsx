@@ -24,7 +24,7 @@ export default function ShirtsPage() {
     searchQuery,
     setSearchQuery,
     loadMore
-  } = usePageProducts("shirts", 12); // Extracted values correspond purely to category = "shirts"
+  } = usePageProducts("accessories", 12); // Extracted values correspond purely to category = "accessories"
 
   // Process data mutations cleanly based on dynamic user sub-category choices
   const processedProducts = useMemo(() => {
@@ -52,7 +52,7 @@ export default function ShirtsPage() {
       <GlobalStyles />
       
       {/* Brand Aesthetic Banner Section */}
-      <Hero  image="/shirts-hero.jpg" name="Shirts" description="Explore our latest arrivals in the world of menswear." />
+      <Hero  image="/accessories-hero.jpg" name="Accessories" description="Discover our curated collection of premium accessories." />
 
       {/* Synchronized Control Filter Bar */}
       <FilterBar 
