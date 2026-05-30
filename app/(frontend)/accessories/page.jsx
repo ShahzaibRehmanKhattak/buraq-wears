@@ -5,10 +5,10 @@ import { Loader2 } from 'lucide-react';
 // Hooks & Split Components References
 import { usePageProducts } from '@/hooks/usePageProducts';
 import { ProductCard } from '@/components/ProductCard'; 
-import { Hero } from '@/components/shirts/Hero';
-import { FilterBar } from '@/components/shirts/FilterBar';
-import { FeaturedEditorial } from '@/components/shirts/FeaturedEditorial';
-import { GlobalStyles } from '@/components/shirts/GlobalStyles';
+import { Hero } from '@/components/pages/Hero';
+import { FilterBar } from '@/components/pages/FilterBar';
+import { FeaturedEditorial } from '@/components/pages/FeaturedEditorial';
+import { GlobalStyles } from '@/components/pages/GlobalStyles';
 
 export default function ShirtsPage() {
   // 🎯 Clean baseline to handle global collections perfectly

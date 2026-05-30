@@ -9,10 +9,19 @@ import { supabase } from '@/lib/supabase/client';
 export default function Navbar() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState(null);
-  const [userRole, setUserRole] = useState('customer'); 
+  
+  // 🎯 CRITICAL FIX: Initialize state straight out of local storage if available 
+  // to avoid flash-of-unstyled-content during route adjustments
+  const [userRole, setUserRole] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('buraq_user_role') || 'customer';
+    }
+    return 'customer';
+  });
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(true); // Prevents layout flickering during role verification
+  const [isSyncing, setIsSyncing] = useState(true);
 
   useEffect(() => {
     setIsMounted(true);
@@ -29,8 +38,11 @@ export default function Navbar() {
         
       if (data && !error) {
         setUserRole(data.role);
+        // 💾 Cache role immediately to kill hydration delay on next click
+        localStorage.setItem('buraq_user_role', data.role);
       } else {
         setUserRole('customer');
+        localStorage.setItem('buraq_user_role', 'customer');
       }
     } catch (err) {
       console.error("Error fetching user role:", err);
@@ -43,12 +55,13 @@ export default function Navbar() {
   // Track authentication session states reactively
   useEffect(() => {
     const getInitialSession = async () => {
-      setIsSyncing(true);
       const { data: { session } } = await supabase.auth.getSession();
       setCurrentUser(session?.user || null);
+      
       if (session?.user) {
         await fetchUserRole(session.user.id);
       } else {
+        localStorage.removeItem('buraq_user_role');
         setIsSyncing(false);
       }
     };
@@ -60,15 +73,14 @@ export default function Navbar() {
       setCurrentUser(session?.user || null);
       
       if (session?.user) {
-        setIsSyncing(true);
         await fetchUserRole(session.user.id);
         
-        // Force Next.js Server Components / Middleware context state cache to refresh seamlessly
         if (event === 'SIGNED_IN') {
           router.refresh();
         }
       } else {
         setUserRole('customer'); 
+        localStorage.removeItem('buraq_user_role');
         setIsSyncing(false);
       }
     });
@@ -81,6 +93,7 @@ export default function Navbar() {
 
     try {
       setIsMobileMenuOpen(false);
+      localStorage.removeItem('buraq_user_role'); // Clear dynamic store trace
       await supabase.auth.signOut();
       await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
       
@@ -98,10 +111,12 @@ export default function Navbar() {
     { label: 'Shirts', path: '/shirts' },
     { label: 'Trousers', path: '/trousers' },
     { label: 'Accessories', path: '/accessories' },
-   
   ];
 
-  const isAdmin = userRole === 'admin' && !isSyncing;
+  // ⚡ COMPONENT STATE LOGIC:
+  // If local cache says 'admin', show dashboard instantly on render. 
+  // Do not wait for network syncing to complete.
+  const isAdmin = userRole === 'admin';
 
   return (
     <>
@@ -131,11 +146,7 @@ export default function Navbar() {
 
           {/* Right Action Menu Area */}
           <div className="flex items-center justify-end gap-6 flex-1 text-black/80">
-            {isSyncing ? (
-              <span className="text-[9px] font-medium tracking-[0.15em] text-neutral-400 uppercase animate-pulse">
-                Verifying Session...
-              </span>
-            ) : currentUser ? (
+            {currentUser ? (
               <>
                 {isAdmin ? (
                   <Link href="/dashboard" title="Admin Dashboard" className="hover:text-black transition-colors flex items-center gap-1.5 text-xs text-black font-semibold">
@@ -154,16 +165,23 @@ export default function Navbar() {
                 )}
               </>
             ) : (
-              <Link 
-                href="/login" 
-                className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#444444] hover:text-black transition-colors pb-0.5 border-b border-transparent hover:border-black/30"
-              >
-                Login / Signup
-              </Link>
+              // Only render verification state label if there is an active session missing a profile load
+              isSyncing ? (
+                <span className="text-[9px] font-medium tracking-[0.15em] text-neutral-400 uppercase animate-pulse">
+                  Verifying Session...
+                </span>
+              ) : (
+                <Link 
+                  href="/login" 
+                  className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#444444] hover:text-black transition-colors pb-0.5 border-b border-transparent hover:border-black/30"
+                >
+                  Login / Signup
+                </Link>
+              )
             )}
 
-            {/* Shopping Cart UI completely hidden from authenticated Admin sessions */}
-            {!isSyncing && !isAdmin && (
+            {/* Shopping Cart UI hidden from Admin sessions */}
+            {!isAdmin && (
               <Link href="/my-cart" title="Shopping Cart" className="relative hover:text-black transition-colors">
                 <ShoppingBag size={18} strokeWidth={1.5} />
               </Link>
@@ -200,7 +218,7 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-4 text-black/80">
-            {!isSyncing && currentUser && (
+            {currentUser && (
               <>
                 {isAdmin ? (
                   <Link href="/dashboard" title="Admin Dashboard">
@@ -214,7 +232,7 @@ export default function Navbar() {
               </>
             )}
             
-            {!isSyncing && !isAdmin && (
+            {!isAdmin && (
               <Link href="/my-cart" className="relative">
                 <ShoppingBag size={20} strokeWidth={1.5} />
               </Link>
@@ -240,7 +258,7 @@ export default function Navbar() {
       >
         <div className="p-5 flex justify-between items-center border-b border-black/[0.05]">
           <span className="font-semibold tracking-[0.15em] text-xs text-[#666666]">
-            {isSyncing ? 'SYNCING...' : isAdmin ? 'ADMIN CONSOLE' : 'MENU'}
+            {isAdmin ? 'ADMIN CONSOLE' : 'MENU'}
           </span>
           <button 
             onClick={() => setIsMobileMenuOpen(false)}
@@ -266,41 +284,41 @@ export default function Navbar() {
           <div className="h-px bg-black/[0.05] my-2" />
 
           {/* Account contexts dynamically rendered per session state */}
-          {!isSyncing && (
-            currentUser ? (
-              <>
-                {isAdmin ? (
+          {currentUser ? (
+            <>
+              {isAdmin ? (
+                <Link 
+                  href="/dashboard"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-[11px] font-semibold tracking-[0.2em] text-black uppercase flex items-center gap-3"
+                >
+                  <LayoutDashboard size={16} strokeWidth={1.5} />
+                  <span>Go to Dashboard</span>
+                </Link>
+              ) : (
+                <>
                   <Link 
-                    href="/dashboard"
+                    href="/my-orders"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="text-[11px] font-semibold tracking-[0.2em] text-black uppercase flex items-center gap-3"
+                    className="text-[11px] font-medium tracking-[0.2em] text-[#444444] hover:text-black uppercase flex items-center gap-3"
                   >
-                    <LayoutDashboard size={16} strokeWidth={1.5} />
-                    <span>Go to Dashboard</span>
+                    <User size={16} strokeWidth={1.5} />
+                    <span>My Profile</span>
                   </Link>
-                ) : (
-                  <>
-                    <Link 
-                      href="/my-orders"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="text-[11px] font-medium tracking-[0.2em] text-[#444444] hover:text-black uppercase flex items-center gap-3"
-                    >
-                      <User size={16} strokeWidth={1.5} />
-                      <span>My Profile</span>
-                    </Link>
 
-                    <Link 
-                      href="/my-orders"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="text-[11px] font-medium tracking-[0.2em] text-[#444444] hover:text-black uppercase flex items-center gap-3"
-                    >
-                      <ClipboardList size={16} strokeWidth={1.5} />
-                      <span>My Orders</span>
-                    </Link>
-                  </>
-                )}
-              </>
-            ) : (
+                  <Link 
+                    href="/my-orders"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="text-[11px] font-medium tracking-[0.2em] text-[#444444] hover:text-black uppercase flex items-center gap-3"
+                  >
+                    <ClipboardList size={16} strokeWidth={1.5} />
+                    <span>My Orders</span>
+                  </Link>
+                </>
+              )}
+            </>
+          ) : (
+            !isSyncing && (
               <Link 
                 href="/login"
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -314,9 +332,7 @@ export default function Navbar() {
 
         {/* Drawer Footer Action Area */}
         <div className="p-5 border-t border-black/[0.05] bg-[#fafafa]">
-          {isSyncing ? (
-            <div className="w-full h-11 bg-neutral-200 animate-pulse rounded" />
-          ) : currentUser ? (
+          {currentUser ? (
             <button 
               onClick={handleSignOut}
               className="w-full h-11 bg-black text-white text-[10px] font-medium tracking-[0.2em] uppercase flex items-center justify-center gap-2 hover:bg-red-700 transition-colors"
