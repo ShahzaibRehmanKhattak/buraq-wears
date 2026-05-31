@@ -9,6 +9,7 @@ import { Hero } from '@/components/pages/Hero';
 import { FilterBar } from '@/components/pages/FilterBar';
 import { FeaturedEditorial } from '@/components/pages/FeaturedEditorial';
 import { GlobalStyles } from '@/components/pages/GlobalStyles';
+import { PsychologicalNudge } from '@/components/PsychologicalNudge';
 
 export default function ShirtsPage() {
   // 🎯 Clean baseline to handle global collections perfectly
@@ -67,7 +68,7 @@ export default function ShirtsPage() {
 
       {/* Editorial Double Layout Section */}
       <FeaturedEditorial />
-
+<PsychologicalNudge pageName="accessories" />
       {/* Main Core Catalog Section */}
       <main className="max-w-[1440px] mx-auto px-4 md:px-16 lg:px-[64px] py-12 md:py-[80px]">
         {loading ? (

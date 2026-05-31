@@ -1,6 +1,6 @@
 "use client";
 import { Truck, ShieldCheck, RotateCcw } from 'lucide-react';
-export const Newsletter = () => (
+export const NewsLetter = () => (
   <section className="mt-20 py-24 bg-zinc-100 text-center px-6">
     <div className="max-w-xl mx-auto">
       <h3 className="text-3xl font-bold mb-6 text-black">Join the IBNA Circle</h3>

@@ -24,7 +24,8 @@ import { Hero } from '../components/HomeHero';
 import { ProductSection } from '@/components/ProductSection';
 import { TrustSignals } from '@/components/TrustSignals';
 import {LimitedAvailability} from '@/components/LimitedAvailability';
-import {NewArrivals} from '@/components/NewArrival';
+import { NewsLetter } from '@/components/NewsLetter';
+import { PsychologicalNudge } from '@/components/PsychologicalNudge';
 import Footer from '@/components/Footer';
 import Navbar  from '@/components/Navbar';
 import { useProducts } from "@/hooks/useProducts";
@@ -107,14 +108,11 @@ return (
 
       <LimitedAvailability />
       
-      <ProductSection 
-        title="Trending Now" 
-        subtitle="Most loved this week"
-        items={products.slice().reverse()} 
-      />
-
+    
       {/* <NewArrivals /> */}
       <TrustSignals />
+      <NewsLetter/>
+      <PsychologicalNudge pageName="home" />
       <Footer />
     </main>
   </div>
