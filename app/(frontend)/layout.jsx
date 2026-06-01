@@ -6,7 +6,9 @@ export default function FrontendLayout({ children }) {
   return (
     <>
         <Navbar />
-        {children}
+       
+          {children}
+        
         <BottomNav />
         <Footer />
     </>

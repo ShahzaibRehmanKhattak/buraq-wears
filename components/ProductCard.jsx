@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Heart } from 'lucide-react';
+import { Heart, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useCart } from '@/hooks/useCart'; // Import your newly created global hook
 
 export const ProductCard = ({ item }) => {
+  const { addItem } = useCart(); // Destructure the global add function
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
+  const [isAdding, setIsAdding] = useState(false); // UI state spinner for async DB writes
 
   const images = Array.isArray(item?.images) && item.images.length > 0
     ? item.images
@@ -30,6 +33,33 @@ export const ProductCard = ({ item }) => {
     const title = item?.title || item?.name || "piece";
     const cleanSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
     return `/${cleanSlug}-${item?.id || 0}`;
+  };
+
+  // 🛒 Secure Add to Cart Handler
+  const handleCartAction = async (e) => {
+    e.preventDefault(); // Prevents clicking the button from redirecting to the product slug URL page
+    e.stopPropagation(); // Stops the card group container element from bubbling events
+
+    if (!item?.id || isAdding) return;
+
+    try {
+      setIsAdding(true);
+      
+      // Pull configurations from product tags or attributes array properties dynamically if available
+      const defaultColor = item?.colors ? item.colors.split(',')[0].trim() : "Standard";
+      const defaultSize = item?.sizes ? item.sizes.split(',')[0].trim() : "Free Size";
+
+      // Execute upsert query tracking pipelines
+      const result = await addItem(item.id, 1, defaultColor, defaultSize);
+      
+      if (!result.success) {
+        console.error("Cart transaction failed:", result.error);
+      }
+    } catch (err) {
+      console.error("Unhandled runtime dispatch execution mapping intercept error:", err);
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   return (
@@ -57,19 +87,24 @@ export const ProductCard = ({ item }) => {
             />
           ))}
 
-          {/* 🎯 ACTION BUTTONS: Now visible on mobile, reveal animation for desktop */}
+          {/* 🎯 ACTION BUTTONS: Visible on mobile, reveal animation for desktop */}
           <div className="absolute inset-x-0 bottom-0 p-3 flex justify-between items-center bg-gradient-to-t from-black/40 to-transparent z-20 
                           md:translate-y-4 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 transition-all duration-300">
             
             <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} 
-              className="bg-white text-black text-[9px] font-bold px-3 py-1.5 uppercase hover:bg-black hover:text-white transition-colors z-30 shadow-md"
+              disabled={isAdding}
+              onClick={handleCartAction} 
+              className="bg-white text-black text-[9px] font-bold px-3 py-1.5 uppercase hover:bg-black hover:text-white transition-colors z-30 shadow-md flex items-center gap-1.5 min-w-[55px] justify-center disabled:opacity-80"
             >
-              Add
+              {isAdding ? (
+                <Loader2 size={10} className="animate-spin text-black" />
+              ) : (
+                "Add"
+              )}
             </button>
             
             <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} 
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); alert("Saved item preference selection."); }} 
               className="z-30 p-1.5 bg-white/90 rounded-full hover:bg-white transition-colors shadow-md"
             >
               <Heart size={16} className="text-black hover:text-red-500 transition-colors" />
