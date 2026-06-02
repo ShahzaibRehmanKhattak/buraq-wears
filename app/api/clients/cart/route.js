@@ -2,7 +2,6 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-// Internal Secure Helper to fetch current customer identity via authorization headers
 async function getAuthenticatedUser(supabase) {
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) {
@@ -11,7 +10,7 @@ async function getAuthenticatedUser(supabase) {
   return user;
 }
 
-// 1. GET: Fetch active bag rows joined with real-time inventory status values
+// 1. GET: Fetch active bag rows
 export async function GET(request) {
   try {
     const cookieStore = await cookies();
@@ -36,7 +35,6 @@ export async function GET(request) {
 
     const user = await getAuthenticatedUser(supabase);
 
-    // Relational Join fetching catalog specs alongside user items
     const { data, error } = await supabase
       .from("cart_items")
       .select(`
@@ -69,7 +67,7 @@ export async function GET(request) {
   }
 }
 
-// 2. POST: Upsert an item combination directly or update active quantity counts
+// 2. POST: Used for initial additions and safe fallback updates
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
@@ -95,23 +93,142 @@ export async function POST(request) {
     const user = await getAuthenticatedUser(supabase);
     const body = await request.json();
 
-    if (!body.product_id) throw new Error("Missing targeted parameter identity: product_id");
+    // ✨ ULTIMATE BACKEND FAILSAFE:
+    // If the frontend triggers a POST request but passes a specific cart item ID,
+    // intercept it and process it directly as a surgical primary key update to prevent 400 errors.
+    const targetRowId = body.cart_item_id || body.id;
+    if (targetRowId) {
+      const targetQuantity = Number(body.quantity);
+      if (isNaN(targetQuantity) || targetQuantity < 1) {
+        throw new Error("Quantity constraint check violation: must be greater than 0");
+      }
 
-    const payload = {
-      user_id: user.id,
-      product_id: body.product_id, // Handled seamlessly as a UUID string
-      quantity: Number(body.quantity) || 1,
-      selected_color: body.selected_color || null,
-      selected_size: body.selected_size || null,
-      updated_at: new Date().toISOString()
-    };
+      const { data, error } = await supabase
+        .from("cart_items")
+        .update({
+          quantity: targetQuantity,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", targetRowId)
+        .eq("user_id", user.id)
+        .select();
 
-    // Leverage Postgres constraint definitions directly via Supabase upsert options
+      if (error) throw error;
+      return new NextResponse(JSON.stringify({ success: true, data }), {
+        status: 200,
+        headers: response.headers
+      });
+    }
+
+    // Standard routine for adding items from the Product Detail Page (PDP)
+    if (!body.product_id) throw new Error("Missing parameter: product_id");
+
+    const targetColor = body.selected_color || null;
+    const targetSize = body.selected_size || null;
+    const incomingQuantity = Number(body.quantity) || 1;
+    
+    const isAbsoluteOverride = body.actionType === "absolute" || body.isAbsolute === true;
+
+    let finalQuery = supabase
+      .from("cart_items")
+      .select("id, quantity")
+      .eq("user_id", user.id)
+      .eq("product_id", body.product_id);
+
+    if (targetColor === null) finalQuery = finalQuery.is("selected_color", null);
+    else finalQuery = finalQuery.eq("selected_color", targetColor);
+
+    if (targetSize === null) finalQuery = finalQuery.is("selected_size", null);
+    else finalQuery = finalQuery.eq("selected_size", targetSize);
+
+    const { data: actualRows } = await finalQuery;
+
+    if (actualRows && actualRows.length > 0) {
+      const targetRow = actualRows[0];
+      
+      const finalCalculatedQuantity = isAbsoluteOverride 
+        ? incomingQuantity 
+        : (targetRow.quantity + incomingQuantity);
+
+      const { data, error } = await supabase
+        .from("cart_items")
+        .update({
+          quantity: finalCalculatedQuantity,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", targetRow.id)
+        .select();
+
+      if (error) throw error;
+      return new NextResponse(JSON.stringify({ success: true, data }), {
+        status: 200,
+        headers: response.headers
+      });
+    } else {
+      const { data, error } = await supabase
+        .from("cart_items")
+        .insert({
+          user_id: user.id,
+          product_id: body.product_id,
+          quantity: incomingQuantity,
+          selected_color: targetColor,
+          selected_size: targetSize
+        })
+        .select();
+
+      if (error) throw error;
+      return new NextResponse(JSON.stringify({ success: true, data }), {
+        status: 200,
+        headers: response.headers
+      });
+    }
+  } catch (err) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 400 });
+  }
+}
+
+// 3. PATCH: Pure absolute quantity modifier for increment/decrement operations
+export async function PATCH(request) {
+  try {
+    const cookieStore = await cookies();
+    const response = NextResponse.json({ message: "Syncing direct quantity state..." });
+    const allCookies = cookieStore.getAll();
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+      {
+        cookies: {
+          getAll() { return allCookies; },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+              response.cookies.set(name, value, options);
+            });
+          }
+        }
+      }
+    );
+
+    const user = await getAuthenticatedUser(supabase);
+    const body = await request.json();
+
+    const targetRowId = body.cart_item_id || body.id;
+    if (!targetRowId) throw new Error("Missing targeted item identity row field");
+
+    const targetQuantity = Number(body.quantity);
+    if (isNaN(targetQuantity) || targetQuantity < 1) {
+      throw new Error("Quantity constraint check violation: must be greater than 0");
+    }
+
     const { data, error } = await supabase
       .from("cart_items")
-      .upsert(payload, { 
-        onConflict: "user_id, product_id, selected_color, selected_size" 
+      .update({
+        quantity: targetQuantity,
+        updated_at: new Date().toISOString()
       })
+      .eq("id", targetRowId)
+      .eq("user_id", user.id)
       .select();
 
     if (error) throw error;
@@ -125,7 +242,7 @@ export async function POST(request) {
   }
 }
 
-// 3. DELETE: Target and eliminate specific database item entries
+// 4. DELETE: Clear single cart configuration nodes
 export async function DELETE(request) {
   try {
     const cookieStore = await cookies();
@@ -158,7 +275,7 @@ export async function DELETE(request) {
       .from("cart_items")
       .delete()
       .eq("id", cartItemId)
-      .eq("user_id", user.id); // Validates customer access authority bounds
+      .eq("user_id", user.id);
 
     if (error) throw error;
 

@@ -5,13 +5,27 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import { useCart } from '@/hooks/useCart'; 
 
 export default function Navbar() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState(null);
   
-  // 🎯 CRITICAL FIX: Initialize state straight out of local storage if available 
-  // to avoid flash-of-unstyled-content during route adjustments
+  // Extract context parameters explicitly
+  const { totalItemCount, refreshCart, clearCart } = useCart();
+
+  // Unified reactive count state tracking
+  const [liveCount, setLiveCount] = useState(0);
+  const [isClient, setIsClient] = useState(false);
+
+  const [currentUser, setCurrentUser] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const keys = Object.keys(localStorage);
+      const supabaseKey = keys.find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
+      return supabaseKey ? JSON.parse(localStorage.getItem(supabaseKey))?.user : null;
+    }
+    return null;
+  });
+  
   const [userRole, setUserRole] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('buraq_user_role') || 'customer';
@@ -20,14 +34,37 @@ export default function Navbar() {
   });
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(!currentUser);
 
+  // ⚡ FIX: Sync the local UI state with the global hook state immediately
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    setIsClient(true);
+    setLiveCount(totalItemCount || 0);
+  }, [totalItemCount]);
 
-  // Fetch user role directly from profiles database table
+  // ⚡ FIX: Event-driven backup trigger to intercept cross-layout additions
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const syncBadgeCount = () => {
+      if (typeof totalItemCount !== 'undefined') {
+        setLiveCount(totalItemCount);
+      }
+      // Force refresh if hook variables are lagging behind network calls
+      if (refreshCart) {
+        refreshCart();
+      }
+    };
+
+    window.addEventListener('cart-updated', syncBadgeCount);
+    window.addEventListener('focus', syncBadgeCount); // Sync when user tab regains focus
+
+    return () => {
+      window.removeEventListener('cart-updated', syncBadgeCount);
+      window.removeEventListener('focus', syncBadgeCount);
+    };
+  }, [totalItemCount, refreshCart]);
+
   const fetchUserRole = async (userId) => {
     try {
       const { data, error } = await supabase
@@ -38,21 +75,19 @@ export default function Navbar() {
         
       if (data && !error) {
         setUserRole(data.role);
-        // 💾 Cache role immediately to kill hydration delay on next click
         localStorage.setItem('buraq_user_role', data.role);
       } else {
         setUserRole('customer');
         localStorage.setItem('buraq_user_role', 'customer');
       }
     } catch (err) {
-      console.error("Error fetching user role:", err);
+      console.error(err);
       setUserRole('customer');
     } finally {
       setIsSyncing(false);
     }
   };
 
-  // Track authentication session states reactively
   useEffect(() => {
     const getInitialSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -60,6 +95,7 @@ export default function Navbar() {
       
       if (session?.user) {
         await fetchUserRole(session.user.id);
+        if (refreshCart) refreshCart(); 
       } else {
         localStorage.removeItem('buraq_user_role');
         setIsSyncing(false);
@@ -68,14 +104,12 @@ export default function Navbar() {
     
     getInitialSession();
 
-    // Listen closely to auth changes (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setCurrentUser(session?.user || null);
-      
       if (session?.user) {
         await fetchUserRole(session.user.id);
-        
         if (event === 'SIGNED_IN') {
+          if (refreshCart) refreshCart();
           router.refresh();
         }
       } else {
@@ -86,23 +120,23 @@ export default function Navbar() {
     });
 
     return () => subscription.unsubscribe();
-  }, [router]);
+  }, [router, refreshCart]);
 
   const handleSignOut = async () => {
-    if (!isMounted) return;
-
     try {
       setIsMobileMenuOpen(false);
-      localStorage.removeItem('buraq_user_role'); // Clear dynamic store trace
+      if (clearCart) clearCart();
+      setCurrentUser(null);
+      setUserRole('customer');
+      localStorage.removeItem('buraq_user_role'); 
+
       await supabase.auth.signOut();
       await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
       
-      window.queueMicrotask(() => {
-        router.refresh();
-        router.push('/');
-      });
+      router.refresh();
+      router.push('/');
     } catch (error) {
-      console.error("Sign out encountered an error:", error);
+      console.error(error);
     }
   };
 
@@ -113,43 +147,33 @@ export default function Navbar() {
     { label: 'Accessories', path: '/accessories' },
   ];
 
-  // ⚡ COMPONENT STATE LOGIC:
-  // If local cache says 'admin', show dashboard instantly on render. 
-  // Do not wait for network syncing to complete.
   const isAdmin = userRole === 'admin';
 
   return (
     <>
-      {/* Desktop Header */}
+      {/* ================= DESKTOP HEADER ================= */}
       <nav className="hidden md:flex fixed top-0 left-0 w-full z-50 bg-white border-b border-black/[0.06] py-5">
         <div className="flex justify-between items-center w-full px-16 max-w-[1440px] mx-auto">
           
-          {/* Professional High-End Editorial Logo */}
           <div className="flex-1">
-            <Link href="/" className="group inline-block font-sans text-xl font-bold tracking-[0.05em] uppercase text-black subpixel-antialiased">
-              Buraq<span className="font-light text-[#777777] transition-colors duration-300 group-hover:text-black">Wears</span>
+            <Link href="/" className="group inline-block font-sans text-xl font-bold tracking-[0.05em] uppercase text-black">
+              Buraq<span className="font-light text-[#777777] group-hover:text-black transition-colors duration-300">Wears</span>
             </Link>
           </div>
 
-          {/* Center Links */}
           <div className="flex items-center justify-center gap-10 flex-[2]">
             {navLinks.map((item) => (
-              <Link 
-                key={item.label} 
-                href={item.path} 
-                className="text-[11px] font-medium uppercase tracking-[0.2em] text-[#555555] hover:text-black transition-colors duration-300 pb-0.5"
-              >
+              <Link key={item.label} href={item.path} className="text-[11px] font-medium uppercase tracking-[0.2em] text-[#555555] hover:text-black transition-colors duration-300 pb-0.5">
                 {item.label}
               </Link>
             ))}
           </div>
 
-          {/* Right Action Menu Area */}
           <div className="flex items-center justify-end gap-6 flex-1 text-black/80">
             {currentUser ? (
               <>
                 {isAdmin ? (
-                  <Link href="/dashboard" title="Admin Dashboard" className="hover:text-black transition-colors flex items-center gap-1.5 text-xs text-black font-semibold">
+                  <Link href="/dashboard" className="hover:text-black transition-colors flex items-center gap-1.5 text-xs text-black font-semibold">
                     <LayoutDashboard size={18} strokeWidth={1.5} />
                     <span className="uppercase tracking-[0.1em] text-[10px]">Dashboard</span>
                   </Link>
@@ -165,51 +189,42 @@ export default function Navbar() {
                 )}
               </>
             ) : (
-              // Only render verification state label if there is an active session missing a profile load
               isSyncing ? (
-                <span className="text-[9px] font-medium tracking-[0.15em] text-neutral-400 uppercase animate-pulse">
-                  Verifying Session...
-                </span>
+                <div className="w-16 h-4 bg-neutral-100 animate-pulse rounded-sm" />
               ) : (
-                <Link 
-                  href="/login" 
-                  className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#444444] hover:text-black transition-colors pb-0.5 border-b border-transparent hover:border-black/30"
-                >
+                <Link href="/login" className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#444444] hover:text-black transition-colors pb-0.5 border-b border-transparent hover:border-black/30">
                   Login / Signup
                 </Link>
               )
             )}
 
-            {/* Shopping Cart UI hidden from Admin sessions */}
+            {/* Shopping Cart UI Icon */}
             {!isAdmin && (
-              <Link href="/my-cart" title="Shopping Cart" className="relative hover:text-black transition-colors">
+              <Link href="/my-cart" className="relative hover:text-black transition-colors p-1 group/cart">
                 <ShoppingBag size={18} strokeWidth={1.5} />
+                {isClient && liveCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] px-1 bg-black text-white text-[8px] font-bold rounded-full flex items-center justify-center tracking-tight border border-white scale-100">
+                    {liveCount}
+                  </span>
+                )}
               </Link>
             )}
 
             {currentUser && (
-              <button 
-                onClick={handleSignOut} 
-                className="flex items-center gap-2 text-xs font-medium text-[#666666] hover:text-red-600 transition-colors cursor-pointer ml-1 border-l border-black/[0.08] pl-5"
-              >
+              <button onClick={handleSignOut} className="flex items-center gap-2 text-xs font-medium text-[#666666] hover:text-red-600 transition-colors cursor-pointer ml-1 border-l border-black/[0.08] pl-5">
                 <LogOut size={15} strokeWidth={1.5} />
                 <span className="uppercase tracking-[0.15em] text-[9px] font-semibold">Logout</span>
               </button>
             )}
           </div>
-
         </div>
       </nav>
 
-      {/* Mobile Header */}
+      {/* ================= MOBILE HEADER ================= */}
       <header className="md:hidden fixed top-0 left-0 w-full z-50 bg-white border-b border-b-black/[0.05] h-16">
         <div className="flex items-center justify-between px-5 h-full">
-          
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsMobileMenuOpen(true)} 
-              className="text-black focus:outline-none py-1"
-            >
+            <button onClick={() => setIsMobileMenuOpen(true)} className="text-black focus:outline-none py-1">
               <Menu size={22} strokeWidth={1.5} />
             </button>
             <Link href="/" className="text-lg font-bold tracking-[0.04em] uppercase text-black">
@@ -218,134 +233,46 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-4 text-black/80">
-            {currentUser && (
+            {currentUser && !isAdmin && (
               <>
-                {isAdmin ? (
-                  <Link href="/dashboard" title="Admin Dashboard">
-                    <LayoutDashboard size={20} strokeWidth={1.5} className="text-black" />
-                  </Link>
-                ) : (
-                  <Link href="/my-orders">
-                    <ClipboardList size={20} strokeWidth={1.5} />
-                  </Link>
-                )}
+                <Link href="/my-orders"><ClipboardList size={20} strokeWidth={1.5} /></Link>
+                <Link href="/my-orders"><User size={20} strokeWidth={1.5} /></Link>
               </>
             )}
             
             {!isAdmin && (
-              <Link href="/my-cart" className="relative">
+              <Link href="/my-cart" className="relative p-1">
                 <ShoppingBag size={20} strokeWidth={1.5} />
+                {isClient && liveCount > 0 && (
+                  <span className="absolute top-0 right-0 min-w-[14px] h-[14px] bg-black text-white text-[8px] font-bold rounded-full flex items-center justify-center border border-white">
+                    {liveCount}
+                  </span>
+                )}
               </Link>
             )}
           </div>
-
         </div>
       </header>
 
-      {/* Mobile Sidebar Navigation Drawer Overlay */}
-      <div 
-        className={`fixed inset-0 z-50 bg-black/30 backdrop-blur-sm transition-opacity duration-300 md:hidden ${
-          isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
-        onClick={() => setIsMobileMenuOpen(false)}
-      />
-
-      {/* Mobile Sidebar Drawer Panel */}
-      <aside 
-        className={`fixed top-0 left-0 h-full w-[270px] bg-white z-50 shadow-xl transition-transform duration-300 ease-out flex flex-col md:hidden ${
-          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
+      {/* Mobile Sidebar Navigation Drawer */}
+      <aside className={`fixed top-0 left-0 h-full w-[270px] bg-white z-50 shadow-xl transition-transform duration-300 ease-out flex flex-col md:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-5 flex justify-between items-center border-b border-black/[0.05]">
-          <span className="font-semibold tracking-[0.15em] text-xs text-[#666666]">
-            {isAdmin ? 'ADMIN CONSOLE' : 'MENU'}
-          </span>
-          <button 
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="text-black p-1 hover:opacity-60 transition-opacity"
-          >
-            <X size={20} strokeWidth={1.5} />
-          </button>
+          <span className="font-semibold tracking-[0.15em] text-xs text-[#666666]">{isAdmin ? 'ADMIN CONSOLE' : 'MENU'}</span>
+          <button onClick={() => setIsMobileMenuOpen(false)} className="text-black p-1"><X size={20} strokeWidth={1.5} /></button>
         </div>
-
-        {/* Drawer Links */}
         <nav className="flex-grow p-6 flex flex-col gap-6">
           {navLinks.map((item) => (
-            <Link 
-              key={item.label} 
-              href={item.path}
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="text-[11px] font-medium tracking-[0.2em] text-[#444444] hover:text-black uppercase transition-colors"
-            >
-              {item.label}
-            </Link>
+            <Link key={item.label} href={item.path} onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] font-medium tracking-[0.2em] text-[#444444] uppercase">{item.label}</Link>
           ))}
-          
-          <div className="h-px bg-black/[0.05] my-2" />
-
-          {/* Account contexts dynamically rendered per session state */}
-          {currentUser ? (
-            <>
-              {isAdmin ? (
-                <Link 
-                  href="/dashboard"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="text-[11px] font-semibold tracking-[0.2em] text-black uppercase flex items-center gap-3"
-                >
-                  <LayoutDashboard size={16} strokeWidth={1.5} />
-                  <span>Go to Dashboard</span>
-                </Link>
-              ) : (
-                <>
-                  <Link 
-                    href="/my-orders"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="text-[11px] font-medium tracking-[0.2em] text-[#444444] hover:text-black uppercase flex items-center gap-3"
-                  >
-                    <User size={16} strokeWidth={1.5} />
-                    <span>My Profile</span>
-                  </Link>
-
-                  <Link 
-                    href="/my-orders"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="text-[11px] font-medium tracking-[0.2em] text-[#444444] hover:text-black uppercase flex items-center gap-3"
-                  >
-                    <ClipboardList size={16} strokeWidth={1.5} />
-                    <span>My Orders</span>
-                  </Link>
-                </>
-              )}
-            </>
-          ) : (
-            !isSyncing && (
-              <Link 
-                href="/login"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="text-[11px] font-semibold tracking-[0.2em] text-black uppercase flex items-center gap-3"
-              >
-                <span>Login / Signup →</span>
-              </Link>
-            )
-          )}
         </nav>
-
-        {/* Drawer Footer Action Area */}
         <div className="p-5 border-t border-black/[0.05] bg-[#fafafa]">
           {currentUser ? (
-            <button 
-              onClick={handleSignOut}
-              className="w-full h-11 bg-black text-white text-[10px] font-medium tracking-[0.2em] uppercase flex items-center justify-center gap-2 hover:bg-red-700 transition-colors"
-            >
+            <button onClick={handleSignOut} className="w-full h-11 bg-black text-white text-[10px] font-medium tracking-[0.2em] uppercase flex items-center justify-center gap-2 hover:bg-red-700 transition-colors">
               <LogOut size={14} strokeWidth={1.5} />
               <span>Sign Out</span>
             </button>
           ) : (
-            <Link 
-              href="/login"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="w-full h-11 bg-black text-white text-[10px] font-medium tracking-[0.2em] uppercase flex items-center justify-center hover:opacity-90 transition-opacity"
-            >
+            <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="w-full h-11 bg-black text-white text-[10px] font-medium tracking-[0.2em] uppercase flex items-center justify-center">
               <span>Sign In</span>
             </Link>
           )}

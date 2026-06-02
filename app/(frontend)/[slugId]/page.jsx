@@ -1,4 +1,3 @@
-// app/products/[slugId]/page.jsx
 "use client";
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -7,6 +6,7 @@ import { Loader2, ArrowLeft } from 'lucide-react';
 import { useProductData } from '@/hooks/useProductData';
 import ProductDetails from '@/components/ProductDetails';
 import RelatedProducts from '@/components/RelatedProducts';
+import { useCart } from '@/hooks/useCart'; // Updated path reference mapping
 
 const GlobalStyles = () => (
   <style>{`
@@ -33,6 +33,7 @@ export default function ProductPage() {
   const router = useRouter();
   
   const { product, relatedProducts, loading } = useProductData(slugId);
+  const { addItem } = useCart(); // Access global dispatch actions
 
   if (loading) {
     return (
@@ -73,13 +74,12 @@ export default function ProductPage() {
         </div>
       </header>
 
-      {/* 🎯 Full-Width Presentation Layout Engine Container (Max-W-7xl Viewport Expansion) */}
+      {/* Full-Width Presentation Layout Engine Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
         
-        {/* Detail Container Mount */}
-        <ProductDetails product={product} />
+        {/* Pass down the addItem function seamlessly into details viewport mapping handles */}
+        <ProductDetails product={product} onAddToCart={addItem} />
 
-        {/* Dynamic Title Related Grid Section */}
         <RelatedProducts items={relatedProducts} />
 
       </main>

@@ -1,13 +1,14 @@
-// components/ProductDetails.jsx
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Heart, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Shield, RefreshCw } from 'lucide-react';
+import { Heart, HelpCircle, ChevronLeft, ChevronRight, Sparkles, Shield, RefreshCw, Loader2, Check } from 'lucide-react';
 
-export default function ProductDetails({ product }) {
+export default function ProductDetails({ product, onAddToCart }) {
   const [activeImgIndex, setActiveImgIndex] = useState(0);
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedSize, setSelectedSize] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isAdding, setIsAdding] = useState(false); // Global context dispatch tracking state
+  const [isSuccess, setIsSuccess] = useState(false); // Dynamic temporary feedback state
 
   // Extract array fields directly from your exact DB columns safely
   const images = Array.isArray(product?.images) && product.images.length > 0
@@ -36,6 +37,47 @@ export default function ProductDetails({ product }) {
   const handleNextImage = (e) => {
     e.stopPropagation();
     setActiveImgIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
+
+  // Helper function to force real-time header and layout tree recalculations
+  const dispatchNavbarSync = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('cart-updated'));
+    }
+  };
+
+  // 🛒 Connected Bag Submission Request Pipeline
+  const handleBagSubmission = async () => {
+    if (isAdding || isSuccess || !product?.id) return;
+    
+    try {
+      setIsAdding(true);
+      
+      // Fallback variables matching your existing database configuration fallbacks
+      const targetColor = selectedColor || (dbColors.length > 0 ? dbColors[0] : "Standard");
+      const targetSize = selectedSize || (dbSizes.length > 0 ? dbSizes[0] : "Free Size");
+      
+      // Execute global payload dispatch state with explicit variation configurations passed down
+      if (typeof onAddToCart === 'function') {
+        // Explicitly pass targetColor and targetSize so the parent handler can perform:
+        // SELECT * FROM cart WHERE product_id = X AND selected_color = Y AND selected_size = Z
+        await onAddToCart(product.id, 1, targetColor, targetSize);
+      }
+
+      // ⚡ INSTANT UPDATE BROADCAST: Forces components tracking state to catch context mutation immediately
+      dispatchNavbarSync();
+
+      // Trigger interactive visual confirmation cycle
+      setIsSuccess(true);
+      setTimeout(() => {
+        setIsSuccess(false);
+      }, 2000);
+
+    } catch (err) {
+      console.error("Failed item details placement operation:", err);
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   return (
@@ -91,7 +133,7 @@ export default function ProductDetails({ product }) {
           )}
         </div>
         
-        {/* Horizontal Miniature Display Grid Tracker (Sized down uniformly to match frame dimensions) */}
+        {/* Horizontal Miniature Display Grid Tracker */}
         {images.length > 1 && (
           <div className="grid grid-cols-5 gap-2 w-full max-w-full">
             {images.map((imgUrl, idx) => {
@@ -164,6 +206,7 @@ export default function ProductDetails({ product }) {
                 return (
                   <button 
                     key={color} 
+                    type="button"
                     onClick={() => setSelectedColor(color)}
                     className={`relative w-7 h-7 rounded-full border transition-all tap-scale ${
                       isCurrent ? 'border-neutral-900 ring-2 ring-offset-2 ring-neutral-900 scale-105' : 'border-neutral-300 hover:border-neutral-400'
@@ -184,7 +227,7 @@ export default function ProductDetails({ product }) {
           <div className="space-y-2">
             <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-wider text-neutral-900">
               <span>Select Size Variant</span>
-              <button className="text-neutral-500 hover:text-black transition-colors flex items-center gap-1 normal-case text-[11px] font-semibold">
+              <button type="button" className="text-neutral-500 hover:text-black transition-colors flex items-center gap-1 normal-case text-[11px] font-semibold">
                 Size Guide <HelpCircle className="w-3 h-3" />
               </button>
             </div>
@@ -194,6 +237,7 @@ export default function ProductDetails({ product }) {
                 return (
                   <button 
                     key={size} 
+                    type="button"
                     onClick={() => setSelectedSize(size)}
                     className={`py-2.5 text-[10px] font-bold uppercase border rounded-md tracking-wider transition-all tap-scale ${
                       isCurrent 
@@ -211,10 +255,32 @@ export default function ProductDetails({ product }) {
 
         {/* Action Center Buttons Set */}
         <div className="flex gap-2.5 pt-1">
-          <button className="flex-grow bg-neutral-900 text-white py-3.5 text-[11px] font-bold uppercase tracking-[0.2em] rounded-md shadow-xs hover:bg-black transition-all tap-scale">
-            ADD TO BAG
+          <button 
+            type="button"
+            disabled={isAdding}
+            onClick={handleBagSubmission}
+            className={`flex-grow py-3.5 text-[11px] font-bold uppercase tracking-[0.2em] rounded-md shadow-xs transition-all tap-scale flex items-center justify-center gap-2 min-h-[46px] ${
+              isSuccess 
+                ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
+                : 'bg-neutral-900 text-white hover:bg-black disabled:opacity-80'
+            }`}
+          >
+            {isAdding ? (
+              <>
+                <Loader2 size={12} className="animate-spin text-white" />
+                <span>Processing...</span>
+              </>
+            ) : isSuccess ? (
+              <>
+                <Check size={12} className="text-white stroke-[3]" />
+                <span>Added to Bag!</span>
+              </>
+            ) : (
+              "ADD TO BAG"
+            )}
           </button>
           <button 
+            type="button"
             onClick={() => setIsFavorite(!isFavorite)} 
             className="w-12 flex items-center justify-center border border-neutral-200 bg-white hover:bg-neutral-50 rounded-md transition-all tap-scale"
           >
@@ -239,7 +305,6 @@ export default function ProductDetails({ product }) {
             </div>
           )}
 
-          {/* Specifications Grid Display Block */}
           {product?.material || product?.warranty || product?.sku ? (
             <div className="p-3 bg-neutral-50 rounded-md border border-neutral-200/60 grid grid-cols-2 gap-x-4 gap-y-2 text-[10.5px]">
               {product.sku && (
