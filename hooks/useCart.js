@@ -10,12 +10,13 @@ export function CartProvider({ children }) {
   const [error, setError] = useState(null);
   const [toast, setToast] = useState({ visible: false, message: '' });
 
-  const showToast = (message) => {
+  // 🍞 Toast management trigger
+  const showToast = useCallback((message) => {
     setToast({ visible: true, message });
     setTimeout(() => {
       setToast({ visible: false, message: '' });
     }, 4500);
-  };
+  }, []);
 
   const fetchCart = useCallback(async () => {
     try {
@@ -27,14 +28,21 @@ export function CartProvider({ children }) {
         return;
       }
 
-      const json = await res.json();
-      if (json.success) {
-        setCartItems(json.data || []);
-      } else {
-        throw new Error(json.error || "Failed to load active cart items.");
+      const json = await res.json().catch(() => ({}));
+      
+      // If guest user session state matches safely exit without throwing crashes
+      if (json.success === false && (json.error?.toLowerCase().includes('session') || json.error?.toLowerCase().includes('unauthorized'))) {
+        setCartItems([]);
+        return; 
       }
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Could not fetch cart items.");
+      }
+
+      setCartItems(json.data || []);
     } catch (err) {
-      setError(err.message);
+      console.error("Fetch cart error:", err.message);
     } finally {
       setLoading(false);
     }
@@ -46,28 +54,45 @@ export function CartProvider({ children }) {
 
   const addItem = async (productId, quantity = 1, color = null, size = null) => {
     try {
+      const payload = {
+        product_id: productId,
+        quantity: Number(quantity) || 1,
+        selected_color: color || "Standard",
+        selected_size: size || "Free Size"
+      };
+
       const res = await fetch('/api/clients/cart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          product_id: productId,
-          quantity: quantity,
-          selected_color: color,
-          selected_size: size
-        })
+        body: JSON.stringify(payload)
       });
 
-      if (res.status === 401 || res.status === 403) {
+      const json = await res.json().catch(() => ({}));
+
+      // Intercept authentication or session blocks instantly
+      if (
+        res.status === 401 || 
+        res.status === 403 || 
+        res.status === 400 ||
+        json.error?.toLowerCase().includes('unauthorized') ||
+        json.error?.toLowerCase().includes('session')
+      ) {
         showToast("Please login or register an account to add items to your cart.");
         return { success: false, unauthorized: true };
       }
 
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || `Server returned code ${res.status}`);
+      }
       
       await fetchCart();
+      
+      // ✨ SUCCESS TOAST: Notifies user of a successful cart addition
+      showToast("Item successfully added to your shopping bag!");
+      
       return { success: true };
     } catch (err) {
+      console.error("Add item server error handled:", err.message);
       setError(err.message);
       return { success: false, error: err.message };
     }
@@ -78,8 +103,14 @@ export function CartProvider({ children }) {
       return removeItem(cartItemId);
     }
 
+    const previousItems = [...cartItems];
+    
+    // Optimistic Update: Changes UI list instantly to stop layout refetch flashes
+    setCartItems(prev => prev.map(item => 
+      item.id === cartItemId ? { ...item, quantity: targetQuantity } : item
+    ));
+
     try {
-      // ✨ COMPATIBILITY FIX: Pass fallback 'id' along with 'cart_item_id' to satisfy both strict routing logic points
       const res = await fetch('/api/clients/cart', {
         method: 'PATCH', 
         headers: { 'Content-Type': 'application/json' },
@@ -90,19 +121,27 @@ export function CartProvider({ children }) {
         })
       });
 
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      
-      await fetchCart(); // Sync context state cleanly
+      const json = await res.json().catch(() => ({}));
+
+      if (res.status === 401 || res.status === 403 || json.error?.toLowerCase().includes('unauthorized')) {
+        setCartItems(previousItems);
+        showToast("Please login to update item quantities.");
+        return { success: false, unauthorized: true };
+      }
+
+      if (!res.ok || !json.success) throw new Error(json.error || "Server parameters rejected.");
       return { success: true };
     } catch (err) {
       console.error("Quantity sync error:", err.message);
+      setCartItems(previousItems); 
       return { success: false, error: err.message };
     }
   };
 
-  // ✨ ADDED: Core contextual implementation for updating structural variant options safely via POST intercept logic
   const updateSize = async (item, newSize) => {
+    const previousItems = [...cartItems];
+    setCartItems(prev => prev.map(i => i.id === item.id ? { ...i, selected_size: newSize } : i));
+
     try {
       const res = await fetch('/api/clients/cart', {
         method: 'POST',
@@ -119,58 +158,52 @@ export function CartProvider({ children }) {
         })
       });
 
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
+      const json = await res.json().catch(() => ({}));
 
-      await fetchCart();
+      if (res.status === 401 || res.status === 403 || json.error?.toLowerCase().includes('unauthorized')) {
+        setCartItems(previousItems);
+        showToast("Please login to switch options.");
+        return { success: false, unauthorized: true };
+      }
+
+      if (!res.ok || !json.success) throw new Error(json.error || "Server error.");
       return { success: true };
     } catch (err) {
       console.error("Size variant update sync error:", err.message);
+      setCartItems(previousItems);
       return { success: false, error: err.message };
     }
   };
 
   const removeItem = async (cartItemId) => {
-    try {
-      const res = await fetch(`/api/clients/cart?id=${cartItemId}`, {
-        method: 'DELETE'
-      });
+    const previousItems = [...cartItems];
+    setCartItems(prev => prev.filter(item => item.id !== cartItemId));
 
-      if (res.status === 401 || res.status === 403) {
-        showToast("Authentication required to complete operation.");
+    try {
+      const res = await fetch(`/api/clients/cart?id=${cartItemId}`, { method: 'DELETE' });
+      const json = await res.json().catch(() => ({}));
+
+      if (res.status === 401 || res.status === 403 || json.error?.toLowerCase().includes('unauthorized')) {
+        setCartItems(previousItems);
+        showToast("Authentication required to remove items.");
         return { success: false, unauthorized: true };
       }
 
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error);
-      
-      setCartItems(prev => prev.filter(item => item.id !== cartItemId));
+      if (!res.ok || !json.success) throw new Error(json.error || "Delete parameters rejected.");
       return { success: true };
     } catch (err) {
       setError(err.message);
+      setCartItems(previousItems);
       return { success: false, error: err.message };
     }
   };
 
-  const cartSubtotal = cartItems.reduce((acc, item) => {
-    const livePrice = item.products?.price || 0;
-    return acc + (livePrice * item.quantity);
-  }, 0);
-
+  const cartSubtotal = cartItems.reduce((acc, item) => acc + ((item.products?.price || 0) * item.quantity), 0);
   const totalItemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
     <CartContext.Provider value={{
-      cartItems,
-      loading,
-      error,
-      addItem,
-      updateQuantity,
-      updateSize, // Provided to stop parent component lookup crashes
-      removeItem,
-      refreshCart: fetchCart,
-      cartSubtotal,
-      totalItemCount
+      cartItems, loading, error, addItem, updateQuantity, updateSize, removeItem, refreshCart: fetchCart, cartSubtotal, totalItemCount, showToast
     }}>
       {children}
 
@@ -183,14 +216,21 @@ export function CartProvider({ children }) {
       `}</style>
 
       {toast.visible && (
-        <div className="native-toast-animate fixed bottom-6 right-6 z-[100000] bg-neutral-900 border border-neutral-800 text-white p-4 rounded-lg shadow-2xl flex flex-col sm:flex-row items-start sm:items-center gap-4 max-w-sm">
-          <p className="text-[11px] uppercase font-bold tracking-wider leading-relaxed text-neutral-300 flex-1">
-            {toast.message}
-          </p>
-          <div className="flex gap-2 shrink-0 self-end sm:self-center">
-            <a href="/login" className="bg-white text-black text-[9px] font-black uppercase tracking-widest px-3 py-1.5 hover:bg-neutral-200 transition-colors rounded shadow-sm">Sign In</a>
-            <a href="/register" className="border border-neutral-700 text-white text-[9px] font-bold uppercase tracking-widest px-3 py-1.5 hover:bg-neutral-800 transition-colors rounded">Join</a>
+        /* ✨ FLOATING TOAST MOUNTED PERFECTLY AT BOTTOM-LEFT */
+        <div className="native-toast-animate fixed bottom-6 left-6 z-[100000] bg-neutral-900 border border-neutral-800 text-white p-4 rounded-lg shadow-2xl flex flex-col sm:flex-row items-start sm:items-center gap-4 max-w-sm text-left">
+          <div className="flex-1">
+            <p className="text-[11px] uppercase font-bold tracking-wider leading-relaxed text-neutral-300">
+              {toast.message}
+            </p>
           </div>
+          
+          {/* Only render action links if user is NOT authenticated */}
+          {toast.message.toLowerCase().includes('login') && (
+            <div className="flex gap-2 shrink-0 self-end sm:self-center mt-2 sm:mt-0">
+              <a href="/login" className="bg-white text-black text-[9px] font-black uppercase tracking-widest px-3 py-1.5 hover:bg-neutral-200 transition-colors rounded shadow-sm no-underline inline-block">Sign In</a>
+              <a href="/register" className="border border-neutral-700 text-white text-[9px] font-bold uppercase tracking-widest px-3 py-1.5 hover:bg-neutral-800 transition-colors rounded no-underline inline-block">Join</a>
+            </div>
+          )}
         </div>
       )}
     </CartContext.Provider>
@@ -200,7 +240,7 @@ export function CartProvider({ children }) {
 export function useCart() {
   const context = useContext(CartContext);
   if (context === undefined) {
-    throw new Error('useCart must be executed cleanly within a bounded CartProvider canvas context.');
+    throw new Error('useCart must be executed within a CartProvider.');
   }
   return context;
 }

@@ -36,7 +36,7 @@ export const PsychologicalNudge = ({ currentProduct = null }) => {
     return `/${cleanSlug}-${productItem?.id || 0}`;
   };
 
-  // 🔔 Social-App Style Neat Notification Loop (Filtered only for hot deals & trending items)
+  // 🔔 Social-App Style Notification Loop
   useEffect(() => {
     if (loading || Object.keys(outfitCombinationsByPalette).length === 0) return;
 
@@ -51,7 +51,6 @@ export const PsychologicalNudge = ({ currentProduct = null }) => {
         const isShirtHot = shirt.compare_at_price > shirt.price;
         const isTrouserHot = trouser.compare_at_price > trouser.price;
 
-        // ONLY show if it matches your criteria: Hot Deal or Featured Trending look
         if (isShirtHot || isTrouserHot || shirt.is_featured || trouser.is_featured) {
           setCurrentToast({
             palette: primaryGroup.palette,
@@ -86,49 +85,50 @@ export const PsychologicalNudge = ({ currentProduct = null }) => {
 
   return (
     <>
-      {/* ─── PREMIUM APPS-STYLE TOAST NOTIFICATION ─── */}
-      {currentToast && (
-        <div 
-          className={`fixed z-[99999] w-[92%] sm:w-[350px] bg-white/95 backdrop-blur-md border border-neutral-200 p-4 shadow-[0_15px_50px_rgba(0,0,0,0.08)] transition-all duration-500 cubic-bezier(0.16, 1, 0.3, 1) transform top-6 right-4 sm:right-6 rounded-xl border-l-4 ${
-            currentToast.isHotDeal ? 'border-l-emerald-500' : 'border-l-black'
-          } ${isToastVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-4 scale-95 pointer-events-none'}`}
-        >
-          <div className="flex gap-3 items-start">
-            <div className={`p-2 rounded-full shrink-0 ${currentToast.isHotDeal ? 'bg-emerald-50 text-emerald-600' : 'bg-neutral-50 text-neutral-800'}`}>
-              {currentToast.isHotDeal ? <Flame size={14} className="animate-pulse" /> : <Sparkles size={14} />}
+      {/* 注入全局动画样式 */}
+      <style>{`
+        @keyframes customSlideUp {
+          0% { transform: translateY(24px) scale(0.96); opacity: 0; }
+          100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        .native-toast-animate { animation: customSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      `}</style>
+
+      {/* ─── PREMIUM DARK CART-STYLE TOAST NOTIFICATION ─── */}
+      {currentToast && isToastVisible && (
+        <div className="native-toast-animate fixed bottom-24 left-6 z-[100000] bg-neutral-900 border border-neutral-800 text-white p-4 rounded-lg shadow-2xl flex flex-col sm:flex-row items-start sm:items-center gap-4 max-w-sm text-left">
+          <div className="flex-1">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className={`w-1.5 h-1.5 rounded-full ${currentToast.isHotDeal ? 'bg-emerald-500 animate-pulse' : 'bg-white'}`} />
+              <span className="text-[9px] uppercase font-black tracking-widest text-neutral-400">
+                {currentToast.isHotDeal ? 'Limited Drop Match' : 'Trending Combination'}
+              </span>
             </div>
-            
-            <div className="flex-1 min-w-0">
-              <div className="flex justify-between items-center mb-1">
-                <span className={`text-[8.5px] font-bold tracking-wider uppercase ${currentToast.isHotDeal ? 'text-emerald-600' : 'text-neutral-400'}`}>
-                  {currentToast.isHotDeal ? '🔥 Limited Price Drop Match' : '🔥 Trending Style Combination'}
-                </span>
-                <button onClick={() => setIsToastVisible(false)} className="text-neutral-400 hover:text-black transition-colors">
-                  <X size={12} />
-                </button>
-              </div>
-              
-              <p className="text-[11.5px] text-neutral-600 leading-normal">
-                Combine the trending{' '}
-                <Link href={generateSlugUrl(currentToast.shirt)} className="font-semibold text-black underline hover:text-neutral-600 transition-colors">
-                  {currentToast.shirt.title}
-                </Link>{' '}
-                and matching{' '}
-                <Link href={generateSlugUrl(currentToast.trouser)} className="font-semibold text-black underline hover:text-neutral-600 transition-colors">
-                  {currentToast.trouser.title}
-                </Link>
-                .
-              </p>
-              
-              <div className="flex items-center justify-between mt-3.5 pt-2 border-t border-neutral-100 text-[9px]">
-                <button 
-                  onClick={() => { setIsToastVisible(false); setModalOpen(true); }} 
-                  className="text-black font-bold tracking-wider uppercase hover:opacity-60 transition-opacity flex items-center gap-1"
-                >
-                  Explore Mix Studio <ArrowRight size={10} />
-                </button>
-              </div>
-            </div>
+            <p className="text-[11px] uppercase font-bold tracking-wider leading-relaxed text-neutral-200">
+              Combine the trending{' '}
+              <Link href={generateSlugUrl(currentToast.shirt)} className="text-white underline hover:text-neutral-400 transition-colors">
+                {currentToast.shirt.title}
+              </Link>{' '}
+              and matching{' '}
+              <Link href={generateSlugUrl(currentToast.trouser)} className="text-white underline hover:text-neutral-400 transition-colors">
+                {currentToast.trouser.title}
+              </Link>
+              .
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0 self-end sm:self-center mt-2 sm:mt-0">
+            <button 
+              onClick={() => { setIsToastVisible(false); setModalOpen(true); }} 
+              className="bg-white text-black text-[9px] font-black uppercase tracking-widest px-3 py-1.5 hover:bg-neutral-200 transition-colors rounded shadow-sm cursor-pointer"
+            >
+              Mix Studio
+            </button>
+            <button 
+              onClick={() => setIsToastVisible(false)} 
+              className="border border-neutral-700 text-white text-[9px] font-bold uppercase tracking-widest px-2 py-1.5 hover:bg-neutral-800 transition-colors rounded cursor-pointer"
+            >
+              <X size={10} />
+            </button>
           </div>
         </div>
       )}
@@ -136,7 +136,7 @@ export const PsychologicalNudge = ({ currentProduct = null }) => {
       {/* ─── FLOATING ACTION CONTROL ─── */}
       <button 
         onClick={() => setModalOpen(true)} 
-        className="fixed bottom-6 right-6 z-50 bg-black text-white px-5 py-3 uppercase text-[9px] font-bold tracking-[0.2em] hover:bg-neutral-900 transition-all duration-300 shadow-2xl flex items-center gap-2 rounded-full transform hover:scale-105"
+        className="fixed bottom-6 right-6 z-50 bg-black text-white px-5 py-3 uppercase text-[9px] font-bold tracking-[0.2em] hover:bg-neutral-900 transition-all duration-300 shadow-2xl flex items-center gap-2 rounded-full transform hover:scale-105 cursor-pointer"
       >
         <Palette size={11} /> Lookbook Studio
       </button>
@@ -184,7 +184,7 @@ export const PsychologicalNudge = ({ currentProduct = null }) => {
                   <Layers size={11} className="text-neutral-400" />
                   <h3 className="font-bold text-[9px] uppercase tracking-[0.15em] text-black">Curated Pair Coordinates</h3>
                 </div>
-                <button onClick={() => setModalOpen(false)} className="text-neutral-400 hover:text-black p-1 transition-colors"><X size={14} /></button>
+                <button onClick={() => setModalOpen(false)} className="text-neutral-400 hover:text-black p-1 transition-colors cursor-pointer"><X size={14} /></button>
               </div>
 
               {/* DYNAMIC VIEWPORT SCROLL SPACE */}
@@ -198,7 +198,7 @@ export const PsychologicalNudge = ({ currentProduct = null }) => {
                   ) : paginatedPairs.length > 0 ? (
                     <div className="max-w-5xl mx-auto">
                       
-                      {/* INSTAGRAM-STYLE HORIZONTAL SLIDER FOR MOBILE / DUAL-COLUMN GRID FOR DESKTOP */}
+                      {/* DUAL-COLUMN GRID FOR DESKTOP / HORIZONTAL FOR MOBILE */}
                       <div className="flex overflow-x-auto pb-4 pt-1 gap-4 snap-x snap-mandatory scrollbar-none md:grid md:grid-cols-2 md:overflow-x-visible md:pb-0 md:gap-4">
                         {paginatedPairs.map((pair, index) => {
                           const shirtDiscount = pair.shirt.compare_at_price > pair.shirt.price;
@@ -223,14 +223,14 @@ export const PsychologicalNudge = ({ currentProduct = null }) => {
                                   )}
                                 </div>
                                 <span className="text-[11px] font-mono font-bold text-neutral-900">
-                                  ${(Number(pair.shirt.price) + Number(pair.trouser.price)).toFixed(2)}
+                                  ${...((Number(pair.shirt.price) + Number(pair.trouser.price)).toFixed(2))}
                                 </span>
                               </div>
 
                               {/* PAIR DISPLAY BLOCK */}
                               <div className="grid grid-cols-2 gap-3 mb-4">
                                 
-                                {/* 👚 TOP (SHIRT) CARD */}
+                                {/* SHIRT CARD */}
                                 <div className="group/card cursor-pointer w-full border border-neutral-100/70 p-1.5 bg-white rounded-lg transition-all">
                                   <Link href={generateSlugUrl(pair.shirt)} className="block w-full text-inherit no-underline">
                                     <div className="relative aspect-[3/4] overflow-hidden bg-neutral-50 mb-1.5 rounded-md">
@@ -240,7 +240,6 @@ export const PsychologicalNudge = ({ currentProduct = null }) => {
                                         <div className="w-full h-full flex items-center justify-center text-[7px] text-neutral-400">No Img</div>
                                       )}
                                       
-                                      {/* PERFECT BADGES */}
                                       <div className="absolute top-1.5 left-1.5 z-20 flex flex-col gap-1">
                                         <span className="bg-black text-white text-[6px] font-bold px-1.5 py-0.5 uppercase tracking-widest rounded-sm">Top</span>
                                         {shirtDiscount && (
@@ -248,15 +247,13 @@ export const PsychologicalNudge = ({ currentProduct = null }) => {
                                         )}
                                       </div>
                                       
-                                      {/* Slide Up Overlay Hook */}
                                       <div className="absolute inset-x-0 bottom-0 p-1.5 bg-gradient-to-t from-black/70 to-transparent z-20 translate-y-3 opacity-0 group-hover/card:translate-y-0 group-hover/card:opacity-100 transition-all duration-300">
-                                        <button onClick={(e) => handleAddToCart(e, pair.shirt.id, "Top")} className="w-full bg-white text-black text-[8.5px] font-bold py-1 uppercase hover:bg-black hover:text-white transition-colors rounded-sm shadow-sm">Shop Top</button>
+                                        <button onClick={(e) => handleAddToCart(e, pair.shirt.id, "Top")} className="w-full bg-white text-black text-[8.5px] font-bold py-1 uppercase hover:bg-black hover:text-white transition-colors rounded-sm shadow-sm cursor-pointer">Shop Top</button>
                                       </div>
                                     </div>
 
                                     <h4 className="text-[9.5px] font-bold uppercase tracking-wider truncate text-neutral-800">{pair.shirt.title}</h4>
                                     
-                                    {/* NEAT & CLEAN COLOR DISPLAY FIELD */}
                                     {pair.shirt.colors && (
                                       <p className="text-[8px] text-neutral-400 uppercase tracking-wide font-medium mt-0.5 truncate">
                                         Color: {pair.shirt.colors.split(',').join(' / ')}
@@ -270,7 +267,7 @@ export const PsychologicalNudge = ({ currentProduct = null }) => {
                                   </Link>
                                 </div>
 
-                                {/* 👖 BOTTOM (TROUSER) CARD */}
+                                {/* TROUSER CARD */}
                                 <div className="group/card cursor-pointer w-full border border-neutral-100/70 p-1.5 bg-white rounded-lg transition-all">
                                   <Link href={generateSlugUrl(pair.trouser)} className="block w-full text-inherit no-underline">
                                     <div className="relative aspect-[3/4] overflow-hidden bg-neutral-50 mb-1.5 rounded-md">
@@ -280,7 +277,6 @@ export const PsychologicalNudge = ({ currentProduct = null }) => {
                                         <div className="w-full h-full flex items-center justify-center text-[7px] text-neutral-400">No Img</div>
                                       )}
                                       
-                                      {/* PERFECT BADGES */}
                                       <div className="absolute top-1.5 left-1.5 z-20 flex flex-col gap-1">
                                         <span className="bg-neutral-800 text-white text-[6px] font-bold px-1.5 py-0.5 uppercase tracking-widest rounded-sm">Bottom</span>
                                         {trouserDiscount && (
@@ -288,15 +284,13 @@ export const PsychologicalNudge = ({ currentProduct = null }) => {
                                         )}
                                       </div>
                                       
-                                      {/* Slide Up Overlay Hook */}
                                       <div className="absolute inset-x-0 bottom-0 p-1.5 bg-gradient-to-t from-black/70 to-transparent z-20 translate-y-3 opacity-0 group-hover/card:translate-y-0 group-hover/card:opacity-100 transition-all duration-300">
-                                        <button onClick={(e) => handleAddToCart(e, pair.trouser.id, "Bottom")} className="w-full bg-white text-black text-[8.5px] font-bold py-1 uppercase hover:bg-black hover:text-white transition-colors rounded-sm shadow-sm">Shop Bottom</button>
+                                        <button onClick={(e) => handleAddToCart(e, pair.trouser.id, "Bottom")} className="w-full bg-white text-black text-[8.5px] font-bold py-1 uppercase hover:bg-black hover:text-white transition-colors rounded-sm shadow-sm cursor-pointer">Shop Bottom</button>
                                       </div>
                                     </div>
 
                                     <h4 className="text-[9.5px] font-bold uppercase tracking-wider truncate text-neutral-800">{pair.trouser.title}</h4>
                                     
-                                    {/* NEAT & CLEAN COLOR DISPLAY FIELD */}
                                     {pair.trouser.colors && (
                                       <p className="text-[8px] text-neutral-400 uppercase tracking-wide font-medium mt-0.5 truncate">
                                         Color: {pair.trouser.colors.split(',').join(' / ')}
@@ -312,11 +306,11 @@ export const PsychologicalNudge = ({ currentProduct = null }) => {
 
                               </div>
 
-                              {/* PREMIUM MINIMAL BUNDLE TRIGGER BUTTON (FIT-CONTENT) */}
+                              {/* BUNDLE TRIGGER BUTTON */}
                               <div className="w-full flex justify-center mt-auto pt-1">
                                 <button 
                                   onClick={() => handleAddBundleToCart(pair.shirt.id, pair.trouser.id)}
-                                  className="w-fit bg-black text-white px-4 py-2 text-[8px] font-bold uppercase tracking-widest hover:bg-neutral-800 transition-colors duration-200 flex items-center justify-center gap-1.5 rounded-sm shadow-3xs"
+                                  className="w-fit bg-black text-white px-4 py-2 text-[8px] font-bold uppercase tracking-widest hover:bg-neutral-800 transition-colors duration-200 flex items-center justify-center gap-1.5 rounded-sm shadow-3xs cursor-pointer"
                                 >
                                   <ShoppingBag size={9} /> Add Full Look
                                 </button>

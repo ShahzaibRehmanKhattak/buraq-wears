@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import { Heart, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useCart } from '@/hooks/useCart'; // Import your newly created global hook
+// 🚨 CHANGED: Force point directly to your master Context Provider, NOT hooks/useCart
+import { useCart } from '@/hooks/useCart'; 
 
 export const ProductCard = ({ item }) => {
-  const { addItem } = useCart(); // Destructure the global add function
+  const { addItem } = useCart(); 
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
-  const [isAdding, setIsAdding] = useState(false); // UI state spinner for async DB writes
+  const [isAdding, setIsAdding] = useState(false); 
 
   const images = Array.isArray(item?.images) && item.images.length > 0
     ? item.images
@@ -35,28 +36,22 @@ export const ProductCard = ({ item }) => {
     return `/${cleanSlug}-${item?.id || 0}`;
   };
 
-  // 🛒 Secure Add to Cart Handler
   const handleCartAction = async (e) => {
-    e.preventDefault(); // Prevents clicking the button from redirecting to the product slug URL page
-    e.stopPropagation(); // Stops the card group container element from bubbling events
+    e.preventDefault(); 
+    e.stopPropagation(); 
 
     if (!item?.id || isAdding) return;
 
     try {
       setIsAdding(true);
       
-      // Pull configurations from product tags or attributes array properties dynamically if available
       const defaultColor = item?.colors ? item.colors.split(',')[0].trim() : "Standard";
       const defaultSize = item?.sizes ? item.sizes.split(',')[0].trim() : "Free Size";
 
-      // Execute upsert query tracking pipelines
-      const result = await addItem(item.id, 1, defaultColor, defaultSize);
-      
-      if (!result.success) {
-        console.error("Cart transaction failed:", result.error);
-      }
+      // Runs directly through our synchronized Context pipeline handler
+      await addItem(item.id, 1, defaultColor, defaultSize);
     } catch (err) {
-      console.error("Unhandled runtime dispatch execution mapping intercept error:", err);
+      console.error("Card action intercept runtime exception handler:", err);
     } finally {
       setIsAdding(false);
     }
@@ -66,10 +61,8 @@ export const ProductCard = ({ item }) => {
     <div className="group cursor-pointer w-full">
       <Link href={generateSlugUrl()} className="block w-full text-inherit no-underline">
         
-        {/* Image Viewport */}
         <div className="relative aspect-[3/4] overflow-hidden bg-[#f3f3f4] mb-4 rounded-md">
           
-          {/* CUSTOM BADGE: Top Left */}
           {item?.badge_text && (
             <div className="absolute top-3 left-3 z-20">
               <span className="bg-black text-white text-[9px] font-bold px-2 py-1 uppercase tracking-widest shadow-sm">
@@ -87,9 +80,8 @@ export const ProductCard = ({ item }) => {
             />
           ))}
 
-          {/* 🎯 ACTION BUTTONS: Visible on mobile, reveal animation for desktop */}
           <div className="absolute inset-x-0 bottom-0 p-3 flex justify-between items-center bg-gradient-to-t from-black/40 to-transparent z-20 
-                          md:translate-y-4 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 transition-all duration-300">
+                        md:translate-y-4 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 transition-all duration-300">
             
             <button 
               disabled={isAdding}
@@ -112,7 +104,6 @@ export const ProductCard = ({ item }) => {
           </div>
         </div>
 
-        {/* META BLOCK */}
         <div className="flex justify-between items-start gap-2">
           <h3 className="text-[12px] font-bold uppercase tracking-wider truncate text-black flex-1">
             {item?.title || item?.name || "Untitled Product"}
@@ -125,7 +116,6 @@ export const ProductCard = ({ item }) => {
           )}
         </div>
         
-        {/* Price Display */}
         <div className="flex items-center gap-2 mt-1">
           <p className={`text-[12px] font-bold ${hasDiscount ? 'text-red-600' : 'text-black'}`}>
             ${Number(item?.price || 0).toFixed(2)}

@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingBag, LogOut, Menu, X, ClipboardList, User, LayoutDashboard } from 'lucide-react';
+import { ShoppingBag, LogOut, Menu, X, ClipboardList, User, LayoutDashboard, LogIn } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -17,8 +17,12 @@ export default function Navbar() {
   const [liveCount, setLiveCount] = useState(0);
   const [isClient, setIsClient] = useState(false);
 
+  // Read immediately from LocalStorage to prevent flash or disappearing layout states on small screens
   const [currentUser, setCurrentUser] = useState(() => {
     if (typeof window !== 'undefined') {
+      const isLogged = localStorage.getItem('buraq_user_status') === 'authenticated';
+      if (isLogged) return { id: 'hydrated' }; // Temp truthy shell till Supabase syncs
+
       const keys = Object.keys(localStorage);
       const supabaseKey = keys.find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
       return supabaseKey ? JSON.parse(localStorage.getItem(supabaseKey))?.user : null;
@@ -36,13 +40,13 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(!currentUser);
 
-  // ⚡ FIX: Sync the local UI state with the global hook state immediately
+  // ⚡ Sync the local UI badge state with the global hook state immediately
   useEffect(() => {
     setIsClient(true);
     setLiveCount(totalItemCount || 0);
   }, [totalItemCount]);
 
-  // ⚡ FIX: Event-driven backup trigger to intercept cross-layout additions
+  // ⚡ Event-driven backup trigger to intercept cross-layout additions
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -50,14 +54,13 @@ export default function Navbar() {
       if (typeof totalItemCount !== 'undefined') {
         setLiveCount(totalItemCount);
       }
-      // Force refresh if hook variables are lagging behind network calls
       if (refreshCart) {
         refreshCart();
       }
     };
 
     window.addEventListener('cart-updated', syncBadgeCount);
-    window.addEventListener('focus', syncBadgeCount); // Sync when user tab regains focus
+    window.addEventListener('focus', syncBadgeCount);
 
     return () => {
       window.removeEventListener('cart-updated', syncBadgeCount);
@@ -76,6 +79,7 @@ export default function Navbar() {
       if (data && !error) {
         setUserRole(data.role);
         localStorage.setItem('buraq_user_role', data.role);
+        localStorage.setItem('buraq_user_status', 'authenticated');
       } else {
         setUserRole('customer');
         localStorage.setItem('buraq_user_role', 'customer');
@@ -94,10 +98,12 @@ export default function Navbar() {
       setCurrentUser(session?.user || null);
       
       if (session?.user) {
+        localStorage.setItem('buraq_user_status', 'authenticated');
         await fetchUserRole(session.user.id);
         if (refreshCart) refreshCart(); 
       } else {
         localStorage.removeItem('buraq_user_role');
+        localStorage.removeItem('buraq_user_status');
         setIsSyncing(false);
       }
     };
@@ -107,6 +113,7 @@ export default function Navbar() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setCurrentUser(session?.user || null);
       if (session?.user) {
+        localStorage.setItem('buraq_user_status', 'authenticated');
         await fetchUserRole(session.user.id);
         if (event === 'SIGNED_IN') {
           if (refreshCart) refreshCart();
@@ -115,6 +122,7 @@ export default function Navbar() {
       } else {
         setUserRole('customer'); 
         localStorage.removeItem('buraq_user_role');
+        localStorage.removeItem('buraq_user_status');
         setIsSyncing(false);
       }
     });
@@ -126,15 +134,20 @@ export default function Navbar() {
     try {
       setIsMobileMenuOpen(false);
       if (clearCart) clearCart();
+      
+      // Wipe structural state identifiers immediately
       setCurrentUser(null);
       setUserRole('customer');
+      
+      // Clean up storage completely
       localStorage.removeItem('buraq_user_role'); 
+      localStorage.removeItem('buraq_user_status'); 
 
       await supabase.auth.signOut();
       await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
       
-      router.refresh();
-      router.push('/');
+      // Hard refresh to clear memory contexts and redirect cleanly to the login page
+      window.location.href = '/login';
     } catch (error) {
       console.error(error);
     }
@@ -233,11 +246,26 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-4 text-black/80">
-            {currentUser && !isAdmin && (
-              <>
-                <Link href="/my-orders"><ClipboardList size={20} strokeWidth={1.5} /></Link>
-                <Link href="/my-orders"><User size={20} strokeWidth={1.5} /></Link>
-              </>
+            {currentUser ? (
+              isAdmin ? (
+                /* Secure Mobile Link for Admin Users */
+                <Link href="/dashboard" title="Admin Dashboard" className="text-black p-1">
+                  <LayoutDashboard size={20} strokeWidth={1.5} />
+                </Link>
+              ) : (
+                /* Uncollapsed Action Row for Authenticated Customers */
+                <>
+                  <Link href="/my-orders" className="p-1"><ClipboardList size={20} strokeWidth={1.5} /></Link>
+                  <Link href="/my-orders" className="p-1"><User size={20} strokeWidth={1.5} /></Link>
+                </>
+              )
+            ) : (
+              /* Fallback Immediate Login Link for Mobile Layout Symmetry */
+              !isSyncing && (
+                <Link href="/login" className="p-1 text-black" title="Login / Signup">
+                  <LogIn size={20} strokeWidth={1.5} />
+                </Link>
+              )
             )}
             
             {!isAdmin && (
@@ -260,14 +288,21 @@ export default function Navbar() {
           <span className="font-semibold tracking-[0.15em] text-xs text-[#666666]">{isAdmin ? 'ADMIN CONSOLE' : 'MENU'}</span>
           <button onClick={() => setIsMobileMenuOpen(false)} className="text-black p-1"><X size={20} strokeWidth={1.5} /></button>
         </div>
+        
         <nav className="flex-grow p-6 flex flex-col gap-6">
+          {isAdmin && (
+            <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] font-bold tracking-[0.2em] text-black uppercase flex items-center gap-2">
+              <LayoutDashboard size={14} strokeWidth={1.5} /> Dashboard Control
+            </Link>
+          )}
           {navLinks.map((item) => (
             <Link key={item.label} href={item.path} onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] font-medium tracking-[0.2em] text-[#444444] uppercase">{item.label}</Link>
           ))}
         </nav>
+        
         <div className="p-5 border-t border-black/[0.05] bg-[#fafafa]">
           {currentUser ? (
-            <button onClick={handleSignOut} className="w-full h-11 bg-black text-white text-[10px] font-medium tracking-[0.2em] uppercase flex items-center justify-center gap-2 hover:bg-red-700 transition-colors">
+            <button onClick={handleSignOut} className="w-full h-11 bg-black text-white text-[10px] font-medium tracking-[0.2em] uppercase flex items-center justify-center gap-2 hover:bg-red-700 transition-colors cursor-pointer">
               <LogOut size={14} strokeWidth={1.5} />
               <span>Sign Out</span>
             </button>
