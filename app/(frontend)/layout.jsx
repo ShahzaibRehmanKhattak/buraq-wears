@@ -9,7 +9,7 @@ export default function FrontendLayout({ children }) {
        
           {children}
         
-        <BottomNav />
+       
         <Footer />
     </>
   );
