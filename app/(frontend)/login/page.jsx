@@ -21,7 +21,7 @@ function LoginFormContent() {
   useEffect(() => {
     const hasCode = searchParams.get('code')
     const hashParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.hash.slice(1)) : null
-    const hasError = searchParams.get('error') || hashParams?.get('error_description')
+    const hasError = searchParams.get('error') || searchParams.get('error_description') || hashParams?.get('error_description')
 
     if (hasCode || (hashParams && hashParams.get('access_token'))) {
       setMessage({ type: 'success', text: 'Welcome back! Redirecting you securely...' })
@@ -32,7 +32,7 @@ function LoginFormContent() {
         if (typeof window !== 'undefined') {
           // Explicitly fallback to current production domain window parameters
           const targetOrigin = window.location.origin
-          window.location.href = `${targetOrigin}/dashboard` 
+          window.location.href = `${targetOrigin}/` 
         }
       }, 1500)
     } else if (hasError) {
@@ -55,8 +55,8 @@ function LoginFormContent() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // Points directly to your unified API route handler (GET method)
-          redirectTo: `${currentOrigin}/`,
+          // 🎯 FIXED: Directs the code parameter to your API server route handler so cookies get saved perfectly
+          redirectTo: `${currentOrigin}/api/auth/login`,
           queryParams: {
             prompt: 'select_account' // Forces the Google account picker to show up cleanly
           }
@@ -111,10 +111,10 @@ function LoginFormContent() {
         <img 
           alt="Editorial high-fashion" 
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuCkD90E8SyjsEwmMeWXMqy1mFKvAbY2bqJAOC4Ymt08rUS3ZAqp78gouEvNvzCitkvw6CSM57WFOmbT_ZOzNf2dRauyPQnjH3XOi1XnXndLgUbA5JS2qjzusbLI29sxrTaoRmpKyr4ecHRho0s_2-HiP8gP7cGUzuxXAQPM9h5_jqXoISh7hQU8qZSAZrNctOXFQty5xR0diWd4gb9o2561dLr74ibsGSC2xqoLDaa-6fm0nKNrT0WzLzmuD_TGNeT7O3sUMf9OYw"
+          src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=1000&auto=format&fit=crop"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent flex flex-col justify-end p-8">
-          <p className="text-xs font-semibold text-white mb-1.5 tracking-[0.2em] uppercase opacity-90">Autumn / Winter 2024</p>
+          <p className="text-xs font-semibold text-white mb-1.5 tracking-[0.2em] uppercase opacity-90">Autumn / Winter 2026</p>
           <h2 className="text-3xl font-bold text-white max-w-xs leading-tight tracking-tight">Precision in every stitch.</h2>
         </div>
       </div>
@@ -175,7 +175,7 @@ function LoginFormContent() {
           <div className="space-y-1.5">
             <div className="flex justify-between items-center">
               <label className="text-xs font-medium text-[#4c4546] uppercase tracking-wider">Password</label>
-              <a href="#" className="text-xs text-[#4c4546] hover:underline">Forgot password?</a>
+              <Link href="/login/forgot-password" className="text-xs text-[#4c4546] hover:underline">Forgot password?</Link>
             </div>
             <input 
               type="password"
@@ -210,7 +210,6 @@ function LoginFormContent() {
 
 export default function LoginPage() {
   return (
-    // Replaced baseline bg-surface with explicit bg-[#fafafa] to lock light style across both desktops & phones
     <div className="bg-[#fafafa] text-black min-h-screen flex flex-col font-sans antialiased">
       <main className="flex-grow flex items-center justify-center py-16 px-5">
         <Suspense fallback={<div className="text-sm tracking-widest text-neutral-400">LOADING UI...</div>}>

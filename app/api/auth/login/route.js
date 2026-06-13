@@ -9,7 +9,6 @@ export async function GET(request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   
-  // Fallback gracefully if the OAuth code is missing
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=Missing authentication code`)
   }
@@ -27,7 +26,6 @@ export async function GET(request) {
     }
   )
 
-  // Exchange the temporary code for a secure, cookie-backed session
   const { data: authData, error: authError } = await supabase.auth.exchangeCodeForSession(code)
 
   if (authError) {
@@ -36,22 +34,21 @@ export async function GET(request) {
   }
 
   try {
-    // Look up the user profile role from your database
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', authData.user?.id)
       .single()
 
-    // Redirect to the correct workspace dynamically on the server side
+    // 🎯 APPEND ?sync=true to force client-side layout synchronization
     if (profile?.role === 'admin') {
-      return NextResponse.redirect(`${origin}/dashboard`)
+      return NextResponse.redirect(`${origin}/dashboard?sync=true`)
     }
-    return NextResponse.redirect(`${origin}/my-orders`)
+    return NextResponse.redirect(`${origin}/my-orders?sync=true`)
     
   } catch (err) {
     console.error('Profile parsing crashed on callback:', err)
-    return NextResponse.redirect(`${origin}/my-orders`)
+    return NextResponse.redirect(`${origin}/my-orders?sync=true`)
   }
 }
 
@@ -63,10 +60,7 @@ export async function POST(request) {
     const { email, password } = await request.json()
 
     if (!email || !password) {
-      return NextResponse.json(
-        { error: 'Email and password are required.' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 })
     }
 
     const cookieStore = await cookies()
@@ -82,7 +76,6 @@ export async function POST(request) {
       }
     )
 
-    // Authenticate credentials against Supabase engine
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -92,29 +85,21 @@ export async function POST(request) {
       return NextResponse.json({ error: authError.message }, { status: 400 })
     }
 
-    // Pull role permissions configuration
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', authData.user.id)
       .single()
   
-    if (profileError || !profile) {
-      return NextResponse.json({ 
-        message: 'Login successful', 
-        role: 'customer' 
-      }, { status: 200 })
-    }
-
     return NextResponse.json({ 
       message: 'Login successful!', 
-      role: profile.role 
+      role: profile?.role || 'customer' 
     }, { status: 200 })
 
   } catch (err) {
     console.error("Login API Crash Details:", err)
     return NextResponse.json(
-      { error: 'Something went wrong on our servers. Please try again later.' },
+      { error: 'Something went wrong on our servers.' },
       { status: 500 }
     )
   }
