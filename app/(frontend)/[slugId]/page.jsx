@@ -1,12 +1,12 @@
 "use client";
 import React from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, notFound } from 'next/navigation'; // ◄ FIXED: Added notFound import here
 import { Loader2, ArrowLeft } from 'lucide-react';
 
 import { useProductData } from '@/hooks/useProductData';
 import ProductDetails from '@/components/ProductDetails';
 import RelatedProducts from '@/components/RelatedProducts';
-import { useCart } from '@/hooks/useCart'; // Updated path reference mapping
+import { useCart } from '@/hooks/useCart';
 
 const GlobalStyles = () => (
   <style>{`
@@ -33,7 +33,7 @@ export default function ProductPage() {
   const router = useRouter();
   
   const { product, relatedProducts, loading } = useProductData(slugId);
-  const { addItem } = useCart(); // Access global dispatch actions
+  const { addItem } = useCart();
 
   if (loading) {
     return (
@@ -44,15 +44,11 @@ export default function ProductPage() {
     );
   }
 
+  // ⚡️ FIXED: Instead of rendering the raw "Item Signature Missing" text panel,
+  // we now hand off control directly to your global Next.js not-found template!
   if (!product) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[#FAFAFA]">
-        <p className="text-[11px] uppercase tracking-[0.15em] text-neutral-400 font-bold">Item Signature Missing</p>
-        <button onClick={() => router.back()} className="text-[10px] uppercase bg-neutral-900 text-white px-4 py-2 rounded-sm font-bold tap-scale">
-          Return to Catalog
-        </button>
-      </div>
-    );
+    notFound();
+    return null;
   }
 
   return (

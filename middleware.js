@@ -2,6 +2,20 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 
 export async function middleware(request) {
+  const currentPath = request.nextUrl.pathname
+
+  // ⚡️ ANTI-LOOP PROTECTION: Exclude static assets, core APIs, and explicit error handlers
+  // This gives Next.js a clear line of sight to render loading.jsx and not-found.jsx safely.
+  if (
+    currentPath.startsWith('/_next') ||
+    currentPath.startsWith('/api') ||
+    currentPath.includes('.') || 
+    currentPath === '/favicon.ico' ||
+    currentPath === '/404' // ◄ Crucial: Allows Next.js to parse the custom 404 boundary unhindered
+  ) {
+    return NextResponse.next()
+  }
+
   // 1. Create an initial response object so we can mutate headers safely
   let response = NextResponse.next({
     request: {
@@ -19,9 +33,7 @@ export async function middleware(request) {
           return request.cookies.get(name)?.value 
         },
         set(name, value, options) {
-          // Sync with the request object to pass downstream
           request.cookies.set({ name, value, ...options })
-          // Instantiate a fresh response object to carry the mutated cookie definitions downstream
           response = NextResponse.next({ request })
           response.cookies.set({ name, value, ...options })
         },
@@ -35,9 +47,7 @@ export async function middleware(request) {
   )
 
   // 3. Fetch the session user securely from Supabase Auth
-  // This explicitly ensures the middleware refreshes expired auth cookies if needed.
   const { data: { user } } = await supabase.auth.getUser()
-  const currentPath = request.nextUrl.pathname
 
   // 4. Define Route Layout Groupings
   const isAuthPage = currentPath === '/login' || currentPath === '/register'
@@ -48,7 +58,6 @@ export async function middleware(request) {
                       currentPath.startsWith('/orders') || 
                       currentPath.startsWith('/settings') ||
                       currentPath.startsWith('/categories')
-
 
   // Customer Account Paths
   const isCustomerPage = currentPath.startsWith('/my-orders') || 
@@ -95,21 +104,19 @@ export async function middleware(request) {
     return NextResponse.redirect(url)
   }
 
-  // Return response containing updated cookie mutations
   return response
 }
 
 // 5. Matcher configuration tracking all relevant route segments
 export const config = {
   matcher: [
-    '/login',
-    '/register',
-    '/dashboard/:path*',
-    '/products/:path*',
-    '/orders/:path*',
-    '/settings/:path*',
-    '/my-orders/:path*',
-    '/my-cart/:path*',
-    '/my-wishlist/:path*',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - explicit asset signatures
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.).*)',
   ],
 }
