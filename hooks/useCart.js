@@ -52,6 +52,12 @@ export function CartProvider({ children }) {
     fetchCart();
   }, [fetchCart]);
 
+  // ✨ ADDED: Clear client side memory variables after checkout order pipeline passes
+  const clearCart = useCallback(async () => {
+    setCartItems([]);
+    setError(null);
+  }, []);
+
   const addItem = async (productId, quantity = 1, color = null, size = null) => {
     try {
       const payload = {
@@ -87,7 +93,7 @@ export function CartProvider({ children }) {
       
       await fetchCart();
       
-      // ✨ SUCCESS TOAST: Notifies user of a successful cart addition
+      // SUCCESS TOAST: Notifies user of a successful cart addition
       showToast("Item successfully added to your shopping bag!");
       
       return { success: true };
@@ -203,7 +209,18 @@ export function CartProvider({ children }) {
 
   return (
     <CartContext.Provider value={{
-      cartItems, loading, error, addItem, updateQuantity, updateSize, removeItem, refreshCart: fetchCart, cartSubtotal, totalItemCount, showToast
+      cartItems, 
+      loading, 
+      error, 
+      addItem, 
+      updateQuantity, 
+      updateSize, 
+      removeItem, 
+      clearCart, // ⚡ EXPOSED TO CONTEXT: Ready for the checkout page call now!
+      refreshCart: fetchCart, 
+      cartSubtotal, 
+      totalItemCount, 
+      showToast
     }}>
       {children}
 
@@ -216,7 +233,6 @@ export function CartProvider({ children }) {
       `}</style>
 
       {toast.visible && (
-        /* ✨ FLOATING TOAST MOUNTED PERFECTLY AT BOTTOM-LEFT */
         <div className="native-toast-animate fixed bottom-6 left-6 z-[100000] bg-neutral-900 border border-neutral-800 text-white p-4 rounded-lg shadow-2xl flex flex-col sm:flex-row items-start sm:items-center gap-4 max-w-sm text-left">
           <div className="flex-1">
             <p className="text-[11px] uppercase font-bold tracking-wider leading-relaxed text-neutral-300">
@@ -224,7 +240,6 @@ export function CartProvider({ children }) {
             </p>
           </div>
           
-          {/* Only render action links if user is NOT authenticated */}
           {toast.message.toLowerCase().includes('login') && (
             <div className="flex gap-2 shrink-0 self-end sm:self-center mt-2 sm:mt-0">
               <a href="/login" className="bg-white text-black text-[9px] font-black uppercase tracking-widest px-3 py-1.5 hover:bg-neutral-200 transition-colors rounded shadow-sm no-underline inline-block">Sign In</a>

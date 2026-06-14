@@ -1,11 +1,78 @@
 "use client";
-import React from 'react';
 
-export default function OrderSummary({ subtotal, isDisabled }) {
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function OrderSummary({ subtotal, isDisabled, cartItems, onOrderSuccess }) {
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  
+  const [fields, setFields] = useState({
+    customerName: '',
+    email: '',
+    shippingAddress: '',
+    city: '',
+    postalCode: '',
+    phone: ''
+  });
+
+  const handleInputChange = (e, key) => {
+    setFields(prev => ({ ...prev, [key]: e.target.value }));
+  };
+
+  const handlePlaceOrder = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setErrorMessage('');
+
+    const sanitizedCartItems = cartItems.map(item => ({
+      product_id: item.product_id || item.id,
+      product_title: item.product_title || item.name || item.title || "Standard Product",
+      quantity: item.quantity,
+      size: item.selected_size || item.size || "M",
+      price: item.products?.price || item.price || 0,
+      image_url: item.products?.image_url || item.image_url || null
+    }));
+
+    try {
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...fields,
+          cartItems: sanitizedCartItems,
+          subtotal
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Logistics order pipeline injection failed.");
+      }
+
+      if (onOrderSuccess) {
+        onOrderSuccess(result.orderId);
+      }
+
+    } catch (err) {
+      setErrorMessage(err.message || 'Transmission crash. Please check your data variables.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="bg-white p-5 md:p-10 border border-black/[0.05] rounded-sm shadow-[0_10px_40px_rgba(0,0,0,0.01)]">
-      <form className="space-y-8 md:space-y-10" onSubmit={(e) => e.preventDefault()}>
+      <form className="space-y-8 md:space-y-10" onSubmit={handlePlaceOrder}>
         
+        {errorMessage && (
+          <div className="text-[11px] font-bold uppercase tracking-wider text-red-700 p-3 bg-red-50 border border-red-100 rounded-sm">
+            ⚠️ {errorMessage}
+          </div>
+        )}
+
         {/* Shipping Information Header Node */}
         <section>
           <h3 className="text-[10px] md:text-[11px] font-semibold uppercase tracking-[0.15em] md:tracking-[0.2em] mb-4 md:mb-6 flex items-center gap-2.5 text-black">
@@ -13,13 +80,32 @@ export default function OrderSummary({ subtotal, isDisabled }) {
             Shipping Information
           </h3>
           <div className="space-y-3">
-            <input className="w-full bg-[#fafafa] border border-black/[0.06] focus:border-black px-3.5 py-2.5 text-[11px] font-medium tracking-wide placeholder:text-black/30 transition-colors rounded-sm" placeholder="Full Name" type="text" required />
-            <input className="w-full bg-[#fafafa] border border-black/[0.06] focus:border-black px-3.5 py-2.5 text-[11px] font-medium tracking-wide placeholder:text-black/30 transition-colors rounded-sm" placeholder="Shipping Address" type="text" required />
+            <input 
+              className="w-full bg-[#fafafa] border border-black/[0.06] focus:border-black px-3.5 py-2.5 text-[11px] font-medium tracking-wide placeholder:text-black/30 transition-colors rounded-sm" 
+              placeholder="Full Name" type="text" required value={fields.customerName} onChange={(e) => handleInputChange(e, 'customerName')}
+            />
+            <input 
+              className="w-full bg-[#fafafa] border border-black/[0.06] focus:border-black px-3.5 py-2.5 text-[11px] font-medium tracking-wide placeholder:text-black/30 transition-colors rounded-sm" 
+              placeholder="Email Terminal Link" type="email" required value={fields.email} onChange={(e) => handleInputChange(e, 'email')}
+            />
+            <input 
+              className="w-full bg-[#fafafa] border border-black/[0.06] focus:border-black px-3.5 py-2.5 text-[11px] font-medium tracking-wide placeholder:text-black/30 transition-colors rounded-sm" 
+              placeholder="Shipping Address" type="text" required value={fields.shippingAddress} onChange={(e) => handleInputChange(e, 'shippingAddress')}
+            />
             <div className="grid grid-cols-2 gap-3">
-              <input className="w-full bg-[#fafafa] border border-black/[0.06] focus:border-black px-3.5 py-2.5 text-[11px] font-medium tracking-wide placeholder:text-black/30 transition-colors rounded-sm" placeholder="City" type="text" required />
-              <input className="w-full bg-[#fafafa] border border-black/[0.06] focus:border-black px-3.5 py-2.5 text-[11px] font-medium tracking-wide placeholder:text-black/30 transition-colors rounded-sm" placeholder="Postal Code" type="text" required />
+              <input 
+                className="w-full bg-[#fafafa] border border-black/[0.06] focus:border-black px-3.5 py-2.5 text-[11px] font-medium tracking-wide placeholder:text-black/30 transition-colors rounded-sm" 
+                placeholder="City" type="text" required value={fields.city} onChange={(e) => handleInputChange(e, 'city')}
+              />
+              <input 
+                className="w-full bg-[#fafafa] border border-black/[0.06] focus:border-black px-3.5 py-2.5 text-[11px] font-medium tracking-wide placeholder:text-black/30 transition-colors rounded-sm" 
+                placeholder="Postal Code" type="text" required value={fields.postalCode} onChange={(e) => handleInputChange(e, 'postalCode')}
+              />
             </div>
-            <input className="w-full bg-[#fafafa] border border-black/[0.06] focus:border-black px-3.5 py-2.5 text-[11px] font-medium tracking-wide placeholder:text-black/30 transition-colors rounded-sm" placeholder="Phone Number" type="tel" required />
+            <input 
+              className="w-full bg-[#fafafa] border border-black/[0.06] focus:border-black px-3.5 py-2.5 text-[11px] font-medium tracking-wide placeholder:text-black/30 transition-colors rounded-sm" 
+              placeholder="Phone Number" type="tel" required value={fields.phone} onChange={(e) => handleInputChange(e, 'phone')}
+            />
           </div>
         </section>
 
@@ -63,11 +149,16 @@ export default function OrderSummary({ subtotal, isDisabled }) {
             </div>
           </div>
           <button 
-            className="w-full bg-black text-white py-3.5 md:py-4 text-[11px] font-semibold uppercase tracking-[0.15em] md:tracking-[0.2em] hover:bg-[#222222] transition-all duration-300 flex items-center justify-center gap-2 rounded-sm shadow-sm disabled:opacity-40 disabled:hover:bg-black" 
+            className="w-full bg-black text-white py-3.5 md:py-4 text-[11px] font-semibold uppercase tracking-[0.15em] md:tracking-[0.2em] hover:bg-[#222222] transition-all duration-300 flex items-center justify-center gap-2 rounded-sm shadow-sm disabled:opacity-40" 
             type="submit"
-            disabled={isDisabled}
+            disabled={isDisabled || isSubmitting}
           >
-            <span className="material-symbols-outlined text-[16px] md:text-[18px]">lock</span> Place Order
+            {isSubmitting ? (
+              <span className="animate-spin text-[12px]">⟳</span>
+            ) : (
+              <span className="material-symbols-outlined text-[16px] md:text-[18px]">lock</span>
+            )}
+            {isSubmitting ? 'Processing Dispatch...' : 'Place Order'}
           </button>
         </section>
 
