@@ -1,19 +1,24 @@
 "use client";
 
-import { ShoppingBag, LogOut, Menu, X, ClipboardList, User, LayoutDashboard, LogIn } from 'lucide-react';
+import { ShoppingBag, LogOut, Menu, X, ClipboardList, User, LayoutDashboard, LogIn, Heart } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import { useCart } from '@/hooks/useCart'; 
+import { useFavorites } from '@/hooks/FavoritesContext'; // Added favorites context connection
 
 export default function Navbar() {
   const { totalItemCount, refreshCart, clearCart } = useCart();
+  const { favoriteItems } = useFavorites(); // Pull active wishlist items state array
 
   // Core Auth States
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState('customer');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Dynamic calculations for wishlist quantity badge counter
+  const totalWishlistCount = favoriteItems?.length || 0;
 
   // Sync user profile data role configuration safely
   const syncUserRole = useCallback(async (userId) => {
@@ -139,9 +144,21 @@ export default function Navbar() {
                         <Link href="/my-orders" title="My Orders" className="hover:text-black transition-colors">
                           <ClipboardList size={18} strokeWidth={1.5} />
                         </Link>
+                        
                         <Link href="/my-orders" title="My Account" className="hover:text-black transition-colors">
                           <User size={18} strokeWidth={1.5} />
                         </Link>
+
+                        {/* ✨ DESKTOP WISHLIST ICON LINK */}
+                        <Link href="/my-wishlist" title="My Wishlist" className="relative hover:text-black transition-colors p-1">
+                          <Heart size={18} strokeWidth={1.5} />
+                          {totalWishlistCount > 0 && (
+                            <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] px-1 bg-black text-white text-[8px] font-bold rounded-full flex items-center justify-center tracking-tight border border-white">
+                              {totalWishlistCount}
+                            </span>
+                          )}
+                        </Link>
+                        
                         <Link href="/my-cart" className="relative hover:text-black transition-colors p-1 group/cart">
                           <ShoppingBag size={18} strokeWidth={1.5} />
                           {totalItemCount > 0 && (
@@ -195,6 +212,17 @@ export default function Navbar() {
                     <>
                       <Link href="/my-orders" className="p-1"><ClipboardList size={20} strokeWidth={1.5} /></Link>
                       <Link href="/my-orders" className="p-1"><User size={20} strokeWidth={1.5} /></Link>
+                      
+                      {/* ✨ MOBILE ICON BAR WISHLIST BUTTON LINK */}
+                      <Link href="/my-wishlist" className="relative p-1">
+                        <Heart size={20} strokeWidth={1.5} />
+                        {totalWishlistCount > 0 && (
+                          <span className="absolute top-0 right-0 min-w-[14px] h-[14px] bg-black text-white text-[8px] font-bold rounded-full flex items-center justify-center border border-white">
+                            {totalWishlistCount}
+                          </span>
+                        )}
+                      </Link>
+
                       <Link href="/my-cart" className="relative p-1">
                         <ShoppingBag size={20} strokeWidth={1.5} />
                         {totalItemCount > 0 && (
@@ -230,7 +258,6 @@ export default function Navbar() {
                 <LayoutDashboard size={14} strokeWidth={1.5} /> Dashboard Control
               </Link>
             ) : (
-              /* 🎯 FIXED: Missing Mobile Customer Sub-links Added */
               <div className="flex flex-col gap-4 border-b border-black/[0.05] pb-4 mb-2">
                 <Link href="/my-orders" onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] font-semibold tracking-[0.15em] text-black uppercase flex items-center gap-2">
                   <ClipboardList size={14} strokeWidth={1.5} /> My Orders
@@ -238,6 +265,12 @@ export default function Navbar() {
                 <Link href="/my-orders" onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] font-semibold tracking-[0.15em] text-black uppercase flex items-center gap-2">
                   <User size={14} strokeWidth={1.5} /> Profile Account
                 </Link>
+                
+                {/* ✨ MOBILE DRAWER SIDEBAR ROW LINK */}
+                <Link href="/my-wishlist" onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] font-semibold tracking-[0.15em] text-black uppercase flex items-center gap-2">
+                  <Heart size={14} strokeWidth={1.5} /> Wishlist Selection ({totalWishlistCount})
+                </Link>
+
                 <Link href="/my-cart" onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] font-semibold tracking-[0.15em] text-black uppercase flex items-center gap-2">
                   <ShoppingBag size={14} strokeWidth={1.5} /> Shopping Cart ({totalItemCount})
                 </Link>

@@ -3,13 +3,19 @@
 import { useState, useEffect } from 'react';
 import { Heart, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-// 🚨 CHANGED: Force point directly to your master Context Provider, NOT hooks/useCart
+// 🚨 CHANGED: Pointing directly to your context hooks
 import { useCart } from '@/hooks/useCart'; 
+import { useFavorites } from '@/hooks/FavoritesContext'; // Ensure this matches your path!
 
 export const ProductCard = ({ item }) => {
   const { addItem } = useCart(); 
+  const { toggleFavorite, isFavorited } = useFavorites(); // ✨ Integrated Favorites Hooks
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [isAdding, setIsAdding] = useState(false); 
+  const [isTogglingFav, setIsTogglingFav] = useState(false); // Local safety flag for rapid clicking
+
+  // Check if this specific item is already favorited
+  const favorited = isFavorited(item?.id);
 
   const images = Array.isArray(item?.images) && item.images.length > 0
     ? item.images
@@ -48,12 +54,29 @@ export const ProductCard = ({ item }) => {
       const defaultColor = item?.colors ? item.colors.split(',')[0].trim() : "Standard";
       const defaultSize = item?.sizes ? item.sizes.split(',')[0].trim() : "Free Size";
 
-      // Runs directly through our synchronized Context pipeline handler
       await addItem(item.id, 1, defaultColor, defaultSize);
     } catch (err) {
       console.error("Card action intercept runtime exception handler:", err);
     } finally {
       setIsAdding(false);
+    }
+  };
+
+  // ✨ New operational handler for toggle action
+  const handleFavoriteAction = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!item?.id || isTogglingFav) return;
+
+    try {
+      setIsTogglingFav(true);
+      // Fires the synchronized contextual pipeline built in step 3
+      await toggleFavorite(item);
+    } catch (err) {
+      console.error("Favorite action runtime exception:", err);
+    } finally {
+      setIsTogglingFav(false);
     }
   };
 
@@ -95,11 +118,20 @@ export const ProductCard = ({ item }) => {
               )}
             </button>
             
+            {/* ✨ UPDATED: Connects seamlessly to your backend context and matches design values */}
             <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); alert("Saved item preference selection."); }} 
-              className="z-30 p-1.5 bg-white/90 rounded-full hover:bg-white transition-colors shadow-md"
+              disabled={isTogglingFav}
+              onClick={handleFavoriteAction} 
+              className="z-30 p-1.5 bg-white/90 rounded-full hover:bg-white transition-colors shadow-md disabled:opacity-70"
             >
-              <Heart size={16} className="text-black hover:text-red-500 transition-colors" />
+              <Heart 
+                size={16} 
+                className={`transition-colors duration-200 ${
+                  favorited 
+                    ? "fill-red-500 text-red-500" 
+                    : "text-black hover:text-red-500"
+                }`} 
+              />
             </button>
           </div>
         </div>

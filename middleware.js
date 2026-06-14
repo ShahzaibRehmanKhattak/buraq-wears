@@ -46,7 +46,9 @@ export async function middleware(request) {
   const isAdminPage = currentPath.startsWith('/dashboard') || 
                       currentPath.startsWith('/products') || 
                       currentPath.startsWith('/orders') || 
-                      currentPath.startsWith('/settings')
+                      currentPath.startsWith('/settings') ||
+                      currentPath.startsWith('/categories')
+
 
   // Customer Account Paths
   const isCustomerPage = currentPath.startsWith('/my-orders') || 
