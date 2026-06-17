@@ -1,20 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 export async function GET(request) {
   try {
     const cookieStore = await cookies();
-    const response = NextResponse.json({ message: "Syncing dashboard order stream..." });
     const allCookies = cookieStore.getAll();
 
-    const supabaseSession = createServerClient(
+    const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
       {
@@ -23,20 +16,20 @@ export async function GET(request) {
           setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value, options }) => {
               cookieStore.set(name, value, options);
-              response.cookies.set(name, value, options);
             });
           }
         }
       }
     );
 
-    const { data: { user }, error: authError } = await supabaseSession.auth.getUser();
+    // Grab user profile token context parameters
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ success: false, error: "Access Denied: Session signature invalid" }, { status: 401 });
+      return NextResponse.json({ success: false, error: "Access Denied: Session unauthorized" }, { status: 401 });
     }
 
-    // Pull historic orders cleanly with a joining select statement via Admin bypass client
-    const { data: databaseOrders, error: fetchError } = await supabaseAdmin
+    // Pull database order items alongside their relational inner items rows mapping
+    const { data: databaseOrders, error: fetchError } = await supabase
       .from('orders')
       .select(`
         id,
@@ -58,22 +51,20 @@ export async function GET(request) {
 
     if (fetchError) throw fetchError;
 
+    // Format fields cleanly to stream directly to dashboard viewports
     const formattedOrders = (databaseOrders || []).map(order => ({
       id: order.id,
       created_at: order.created_at,
-      status: order.status,
+      status: order.status, // Directly channels your database status ("Pending", "Cancelled", etc.)
       total_amount: order.total_amount,
       customer_email: order.customer_email,
       items: order.order_items || []
     }));
 
-    return new NextResponse(JSON.stringify({ success: true, orders: formattedOrders }), {
-      status: 200,
-      headers: response.headers
-    });
+    return NextResponse.json({ success: true, orders: formattedOrders });
 
   } catch (error) {
-    console.error("Orders historical array construction failed:", error.message);
+    console.error("Orders collection process failed:", error.message);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

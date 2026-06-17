@@ -79,7 +79,6 @@ export default function ProductManagementView() {
     }
   };
 
-  // 1. Triggers the custom UI confirmation modal
   const confirmDeleteAction = (id) => {
     const targetProduct = products.find(p => p.id === id);
     setDeleteDialog({ 
@@ -89,7 +88,6 @@ export default function ProductManagementView() {
     });
   };
 
-  // 2. Executes the actual destructive database API call
   const executeDelete = async () => {
     if (!deleteDialog.id) return;
     
@@ -114,57 +112,61 @@ export default function ProductManagementView() {
     }
   };
 
-  // --- Theme State Data Computations ---
   const totalItems = products.length;
   const lowStockCount = products.filter(p => p.stock_qty > 0 && p.stock_qty < 10).length;
   const outOfStockCount = products.filter(p => p.stock_qty <= 0).length;
 
   return (
-    <div className="bg-gray-50/50 h-screen w-full flex flex-col font-sans antialiased text-gray-900 selection:bg-black selection:text-white overflow-hidden relative">
+    <div className="bg-white h-screen w-full flex flex-col font-sans antialiased text-black selection:bg-black/[0.06] overflow-hidden relative">
+      <style>{`
+        body { letter-spacing: -0.01em; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+      `}</style>
       
-      {/* GLOBAL TOAST NOTIFICATION */}
+      {/* SYSTEM SYSTEM-WIDE NOTIFICATIONS GRID */}
       {toast.show && (
-        <div className={`fixed top-8 right-8 z-[100] flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl border transition-all animate-slideIn ${
-          toast.type === 'success' ? 'bg-black text-white border-neutral-800' : 
-          toast.type === 'error' ? 'bg-red-50 text-red-900 border-red-200' : 'bg-neutral-900 text-white border-neutral-800'
+        <div className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-md border text-[12px] font-medium transition-all ${
+          toast.type === 'success' ? 'bg-black text-white border-black' : 
+          toast.type === 'error' ? 'bg-red-50 text-[#de350b] border-red-200' : 'bg-[#111111] text-white border-[#111111]'
         }`}>
-          {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-green-400" />}
-          {toast.type === 'error' && <AlertCircle className="w-4 h-4 text-red-500" />}
-          {toast.type === 'info' && <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />}
-          <span className="text-xs font-semibold tracking-wide">{toast.message}</span>
+          {toast.type === 'success' && <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />}
+          {toast.type === 'error' && <AlertCircle className="w-3.5 h-3.5 text-[#de350b]" />}
+          {toast.type === 'info' && <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin" />}
+          <span className="tracking-wide">{toast.message}</span>
         </div>
       )}
 
-      {/* CUSTOM DELETE CONFIRMATION MODAL */}
+      {/* REFACTORED STRUCTURAL CRITICAL DELETE MODAL */}
       {deleteDialog.isOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[70] p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-slideUp">
-            <div className="p-8 pb-6 flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
-                <Trash2 className="w-8 h-8 text-red-500" />
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white border border-[#eeeeee] rounded-md w-full max-w-md overflow-hidden">
+            <div className="p-6 flex flex-col items-start text-left">
+              <div className="w-10 h-10 bg-red-50 rounded-md flex items-center justify-center mb-4 border border-red-100">
+                <Trash2 className="w-5 h-5 text-[#de350b]" />
               </div>
-              <h3 className="text-xl font-bold text-black mb-2">Delete Product?</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                You are about to permanently delete <strong className="text-black">"{deleteDialog.title}"</strong>. This will remove all associated media, variants, and metadata. This action cannot be undone.
+              <h3 className="text-[16px] font-semibold text-black mb-1">Delete Product Listing</h3>
+              <p className="text-[13px] text-[#555555] leading-relaxed">
+                You are about to permanently delete <span className="text-black font-medium">"{deleteDialog.title}"</span>. This will eliminate all inventory ledger items, media nodes, and variants. This operation cannot be rolled back.
               </p>
             </div>
-            <div className="flex gap-3 px-8 py-6 bg-gray-50/50 border-t border-gray-100">
+            
+            <div className="flex gap-2 px-6 py-4 bg-[#fafafa] border-t border-[#eeeeee]">
               <button 
                 onClick={() => setDeleteDialog({ isOpen: false, id: null, title: '' })} 
                 disabled={isDeleting}
-                className="flex-1 py-3 px-4 border border-gray-200 rounded-xl text-xs font-bold uppercase tracking-widest text-gray-600 hover:bg-white transition-colors disabled:opacity-40"
+                className="flex-1 h-9 border border-[#dddddd] bg-white rounded-md text-[11px] font-semibold uppercase tracking-wider text-[#555555] hover:border-black transition-colors disabled:opacity-40"
               >
                 Cancel
               </button>
               <button 
                 onClick={executeDelete} 
                 disabled={isDeleting}
-                className="flex-1 py-3 px-4 bg-red-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-red-700 transition-colors disabled:bg-red-400 flex items-center justify-center gap-2 shadow-lg shadow-red-600/20"
+                className="flex-1 h-9 bg-[#de350b] text-white rounded-md text-[11px] font-semibold uppercase tracking-wider hover:bg-[#c12e0a] transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
               >
                 {isDeleting ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /><span>Deleting...</span></>
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span>Processing</span></>
                 ) : (
-                  <span>Yes, Delete It</span>
+                  <span>Confirm Erase</span>
                 )}
               </button>
             </div>
@@ -172,10 +174,7 @@ export default function ProductManagementView() {
         </div>
       )}
       
-      {/* 1. TOP NAVBAR */}
-     
-      
-      {/* 2. LOWER CONTENT ZONE CONTAINER */}
+      {/* LOWER CONTENT ZONE CONTAINER */}
       <div className="flex flex-1 w-full h-[calc(100vh-5rem)] overflow-hidden relative">
         
         <Sidebar 
@@ -183,64 +182,69 @@ export default function ProductManagementView() {
           setCollapsed={setSidebarCollapsed} 
         />
         
-        <main className="flex-1 overflow-y-auto  md:px-8 pb-24">
-           <TopBar />
-          <header className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-10 mt-6 lg:mt-0">
-            <div>
-              <h2 className="text-3xl font-bold tracking-tight text-black">Product Management</h2>
-              <p className="text-sm text-gray-400 mt-1">Manage global inventory visibility, retail configurations, and price controls.</p>
-            </div>
-            <button 
-              onClick={() => { setActiveSelection(null); setIsModalOpen(true); }}
-              className="w-full sm:w-auto px-6 py-2.5 bg-black text-white font-bold text-[11px] uppercase tracking-widest hover:bg-neutral-800 transition-all shadow-xl flex items-center justify-center gap-2 rounded-full shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              Add Product Listing
-            </button>
-          </header>
+        <main className="flex-1 overflow-y-auto no-scrollbar md:px-8 pb-24 bg-white">
+          <TopBar />
+          
+          <div className="w-full max-w-[1600px] mx-auto mt-6">
+            {/* HEADER METADATA REGION */}
+            <header className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b border-[#eeeeee] pb-5 gap-4 mb-6">
+              <div>
+                <span className="text-[10px] font-bold tracking-widest uppercase text-[#777777]">Global Index</span>
+                <h2 className="text-[18px] font-semibold tracking-wide text-black mt-0.5">Product Management</h2>
+                <p className="text-[12px] text-[#555555] mt-0.5">Manage global inventory visibility, retail configurations, and price controls.</p>
+              </div>
+              <button 
+                onClick={() => { setActiveSelection(null); setIsModalOpen(true); }}
+                className="w-full sm:w-auto h-8 px-4 bg-black text-white font-medium text-[12px] hover:bg-[#222222] transition-colors flex items-center justify-center gap-1.5 rounded-md shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Product Listing
+              </button>
+            </header>
 
-          {/* Realtime Analytical Metric Dashboard */}
-          <section className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-10">
-            <MetricCard 
-              title="Total Inventory Items" 
-              value={totalItems.toLocaleString()} 
-              trend="Live state" 
-              trendUp={true} 
-              icon={Box} 
-              isPrimary={true} 
-            />
-            <MetricCard 
-              title="Low Stock Items" 
-              value={lowStockCount} 
-              trend="Attention" 
-              trendUp={lowStockCount === 0} 
-              icon={AlertTriangle} 
-            />
-            <div className="col-span-2 lg:col-span-1">
+            {/* REALTIME SYSTEM ANALYTICAL METRICS */}
+            <section className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               <MetricCard 
-                title="Out of Stock" 
-                value={outOfStockCount} 
-                trend="Critical" 
-                trendUp={outOfStockCount === 0} 
-                icon={XOctagon} 
+                title="Total Inventory Items" 
+                value={totalItems.toLocaleString()} 
+                trend="Live state" 
+                trendUp={true} 
+                icon={Box} 
+                isPrimary={true} 
+              />
+              <MetricCard 
+                title="Low Stock Items" 
+                value={lowStockCount} 
+                trend="Attention" 
+                trendUp={lowStockCount === 0} 
+                icon={AlertTriangle} 
+              />
+              <div className="col-span-2 lg:col-span-1">
+                <MetricCard 
+                  title="Out of Stock" 
+                  value={outOfStockCount} 
+                  trend="Critical" 
+                  trendUp={outOfStockCount === 0} 
+                  icon={XOctagon} 
+                />
+              </div>
+            </section>
+
+            {/* PRODUCT SHELF TABLE LISTING COMPONENT */}
+            <div className="w-full border border-[#eeeeee] rounded-md bg-white overflow-hidden">
+              <ProductTable 
+                products={products} 
+                categories={categories}
+                onEdit={(prod) => { setActiveSelection(prod); setIsModalOpen(true); }} 
+                onDelete={confirmDeleteAction} 
               />
             </div>
-          </section>
-
-          {/* Inventory Active Log Core Table Display Module */}
-          <GlassCard className="p-6">
-            <ProductTable 
-              products={products} 
-              categories={categories}
-              onEdit={(prod) => { setActiveSelection(prod); setIsModalOpen(true); }} 
-              onDelete={confirmDeleteAction} // <-- Updated to use custom modal flow
-            />
-          </GlassCard>
+          </div>
 
         </main>
       </div>
 
-      {/* Modular Overlay Dialog Handler Entry Node */}
+      {/* CORE INPUT MODAL DIALOG FLOWS */}
       <ProductModal 
         isOpen={isModalOpen} 
         onClose={() => { setIsModalOpen(false); setActiveSelection(null); }} 

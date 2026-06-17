@@ -1,11 +1,11 @@
 "use client";
 
 import { ShoppingBag, LogOut, Menu, X, ClipboardList, User, LayoutDashboard, LogIn, Heart } from 'lucide-react';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 import { useCart } from '@/hooks/useCart'; 
-import { useFavorites } from '@/hooks/FavoritesContext'; 
+import { useFavorites } from '@/hooks/FavoritesContext'; // Ensured context mapping hook
 
 export default function Navbar() {
   const { totalItemCount, refreshCart, clearCart } = useCart();
@@ -18,78 +18,112 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
+  // Use a ref to keep track of running sync operations to prevent data racing overrides
+  const syncInProgressRef = useRef(null);
+
   // Dynamic calculations for wishlist quantity badge counter
   const totalWishlistCount = favoriteItems?.length || 0;
 
   // Sync user profile data configuration safely
   const syncUserProfile = useCallback(async (userId, fallbackEmail) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role, full_name, avatar_url')
-        .eq('id', userId)
-        .single();
-        
-      if (data && !error) {
-        setUserRole(data.role || 'customer');
-        setProfileData({
-          name: data.full_name || fallbackEmail.split('@')[0],
-          avatarUrl: data.avatar_url || ''
-        });
-      } else {
-        setUserRole('customer');
-        setProfileData({ name: fallbackEmail.split('@')[0], avatarUrl: '' });
-      }
-    } catch (err) {
-      console.error("Error fetching role:", err);
-      setUserRole('customer');
-      setProfileData({ name: fallbackEmail.split('@')[0], avatarUrl: '' });
+    // If a sync is already running for this exact user, return its promise execution track
+    if (syncInProgressRef.current?.userId === userId) {
+      return syncInProgressRef.current.promise;
     }
+
+    const syncPromise = (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('role, full_name, avatar_url')
+          .eq('id', userId)
+          .single();
+          
+        if (data && !error) {
+          return {
+            role: data.role || 'customer',
+            name: data.full_name || fallbackEmail.split('@')[0],
+            avatarUrl: data.avatar_url || ''
+          };
+        }
+      } catch (err) {
+        console.error("Error fetching profile row sync details:", err);
+      }
+      return {
+        role: 'customer',
+        name: fallbackEmail.split('@')[0],
+        avatarUrl: ''
+      };
+    })();
+
+    syncInProgressRef.current = { userId, promise: syncPromise };
+    
+    const result = await syncPromise;
+    
+    setUserRole(result.role);
+    setProfileData({ name: result.name, avatarUrl: result.avatarUrl });
+    
+    return result;
   }, []);
 
-  // Fetch active session from memory/cookie
-  const checkCurrentSession = useCallback(async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        setCurrentUser(session.user);
-        await syncUserProfile(session.user.id, session.user.email);
-        if (refreshCart) refreshCart();
-      } else {
-        setCurrentUser(null);
-        setUserRole('customer');
-        setProfileData({ name: '', avatarUrl: '' });
-      }
-    } catch (err) {
-      console.error("Session lookup failure:", err);
-    } finally {
-      setIsLoaded(true);
+  // Centralized single session processor
+  const processSessionUpdate = useCallback(async (session) => {
+    if (session?.user) {
+      setCurrentUser(session.user);
+      // Wait entirely for profile parameters to confirm *before* updating state trees
+      await syncUserProfile(session.user.id, session.user.email);
+      if (refreshCart) refreshCart();
+    } else {
+      setCurrentUser(null);
+      setUserRole('customer');
+      setProfileData({ name: '', avatarUrl: '' });
     }
+    setIsLoaded(true);
   }, [syncUserProfile, refreshCart]);
 
   useEffect(() => {
-    checkCurrentSession();
+    let isMounted = true;
 
+    // 1. Check current real-time local cache memory layers immediately
+    const initializeAuthenticationState = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (isMounted) {
+          await processSessionUpdate(session);
+        }
+      } catch (err) {
+        console.error("Critical verification runtime layout trace error:", err);
+        if (isMounted) setIsLoaded(true);
+      }
+    };
+
+    initializeAuthenticationState();
+
+    // 2. Setup subscription broadcast receiver hook pipeline
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        setCurrentUser(session.user);
-        await syncUserProfile(session.user.id, session.user.email);
-        if (refreshCart) refreshCart();
-      } else {
+      if (!isMounted) return;
+      
+      // Handle explicit logout event flags immediately to avoid ghost renders
+      if (event === 'SIGNED_OUT') {
         setCurrentUser(null);
         setUserRole('customer');
         setProfileData({ name: '', avatarUrl: '' });
+        setIsLoaded(true);
+      } else {
+        await processSessionUpdate(session);
       }
-      setIsLoaded(true);
     });
 
-    return () => subscription.unsubscribe();
-  }, [checkCurrentSession, syncUserProfile, refreshCart]);
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [processSessionUpdate]);
 
   const handleSignOut = async () => {
     try {
       setIsMobileMenuOpen(false);
+      setIsLoaded(false); // Drop visual interface layout frames during transition phase
       if (clearCart) clearCart();
       
       setCurrentUser(null);
@@ -106,10 +140,9 @@ export default function Navbar() {
     }
   };
 
-  // Helper utility to get user initials cleanly for the luxury avatar fallback
   const getUserInitials = () => {
     if (!profileData.name) return 'U';
-    return profileData.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    return profileData.name.trim().split(/\s+/).map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
   const navLinks = [
@@ -215,7 +248,7 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-4 text-black/80 min-h-[24px]">
-            {isLoaded && (
+            {isLoaded ? (
               <>
                 {currentUser ? (
                   isAdmin ? (
@@ -224,7 +257,6 @@ export default function Navbar() {
                     </Link>
                   ) : (
                     <>
-                      {/* Premium Mobile Logged-In User Identity Link */}
                       <Link href="/profile" className="flex items-center justify-center border border-black/[0.08] rounded-full w-7 h-7 overflow-hidden bg-neutral-50 hover:border-black/30 transition-colors">
                         {profileData.avatarUrl ? (
                           <img src={profileData.avatarUrl} alt={profileData.name} className="w-full h-full object-cover" />
@@ -258,6 +290,8 @@ export default function Navbar() {
                   </Link>
                 )}
               </>
+            ) : (
+              <div className="w-7 h-7 bg-neutral-50 animate-pulse rounded-full" />
             )}
           </div>
         </div>
@@ -282,8 +316,6 @@ export default function Navbar() {
               </Link>
             ) : (
               <div className="flex flex-col gap-4 border-b border-black/[0.05] pb-5 mb-2">
-                
-                {/* Premium Mobile Context User Banner */}
                 <div className="flex items-center gap-3 mb-2 bg-neutral-50 p-2.5 rounded-sm border border-black/[0.02]">
                   <div className="w-8 h-8 rounded-full border border-black/[0.06] overflow-hidden bg-white flex items-center justify-center shrink-0">
                     {profileData.avatarUrl ? (

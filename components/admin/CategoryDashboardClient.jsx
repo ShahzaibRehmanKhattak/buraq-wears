@@ -6,40 +6,33 @@ import {
   LayoutGrid, Search, TrendingUp, TrendingDown, Eye, Share2, 
   ShoppingCart, Receipt, Plus, Menu, X, Bell, ChevronLeft,
   Calendar, Filter, User, Settings, LogOut, Check, Edit2, Trash2,
-  UploadCloud, Package, Layers, BarChart2,
-  
+  UploadCloud, Package, Layers, BarChart2, ChevronDown
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import { MetricCard } from "@/components/admin/MetricCards";
 import { GlassCard } from "@/components/admin/GlassCard";
-import {Sidebar} from "@/components/admin/Sidebar";
+import { Sidebar } from "@/components/admin/Sidebar";
 import { TopBar } from "@/components/admin/Topbar";
-// Initialize client-side Supabase object instance
+
 const supabaseClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 );
-
-
 
 export default function CategoryDashboardClient({ initialCategories = [] }) {
   const router = useRouter();
   const fileInputRef = useRef(null);
   const [isPending, startTransition] = useTransition();
   
-  // App Shell UI State Trees
   const [categories, setCategories] = useState(initialCategories);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedAudience, setSelectedAudience] = useState("All");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
-  // Media Engine State Machine Hooks
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [globalError, setGlobalError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Payload Matrix Blueprint Data Map Form Layout
   const initialFormState = {
     id: null,
     name: "",
@@ -57,7 +50,6 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  // Calculated Real-time Administrative Workspace Operational Metadata
   const metrics = {
     total: categories.length,
     active: categories.filter(c => c.is_active).length,
@@ -82,7 +74,6 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
     setIsDrawerOpen(true);
   };
 
-  // --- LOCAL COMPUTER FILE ATTACHMENT SYSTEM UPLOAD METHOD ---
   const handleLocalImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -162,133 +153,136 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
       alert(`Error eliminating record node: ${err.message}`);
     }
   };
-    const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
-    const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50/60 text-slate-900 flex font-sans selection:bg-black selection:text-white overflow-x-hidden relative">
+    <div className="min-h-screen bg-white text-black flex font-sans antialiased selection:bg-black/[0.06] overflow-x-hidden relative">
       
-      {/* PERSISTENT RESPONSIVE SIDEBAR NAVIGATION COMPONENT */}
+      {/* SIDEBAR NAVIGATION */}
       <Sidebar collapsed={isSidebarCollapsed} setCollapsed={setSidebarCollapsed} />
 
-      {/* COMPREHENSIVE WORKSPACE DESK AREA */}
-      <div className="flex-1 flex flex-col transition-all duration-300 ">
+      {/* PRIMARY CONSOLE DESK */}
+      <div className="flex-1 flex flex-col min-w-0">
         
-        {/* COMPREHENSIVE TOPBAR MODULE */}
-      
-          <TopBar/>
-        {/* PRIMARY MAIN CONSOLE INTERACTION PANEL */}
-        <main className="p-6 lg:p-10 flex-1">
+        <TopBar />
+
+        <main className="p-6 lg:p-8 flex-1 w-full max-w-[1600px] mx-auto space-y-6">
           
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          {/* TOP HEADER CLUSTER */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#eeeeee] pb-5 gap-4">
             <div>
-              <span className="text-[10px] font-bold tracking-widest uppercase text-gray-400">Inventory Core</span>
-              <h1 className="text-2xl font-black tracking-tight text-black">Categories Control Desk</h1>
+              <span className="text-[10px] font-bold tracking-widest uppercase text-[#777777]">Core Modules</span>
+              <h1 className="text-[18px] font-semibold tracking-wide text-black mt-0.5">Categories Workspace</h1>
             </div>
             <button
               onClick={() => openDrawer()}
-              className="bg-black hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-widest px-5 py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm active:scale-98 self-start sm:self-auto"
+              className="h-8 bg-black hover:bg-neutral-900 text-white font-medium text-[12px] px-3 rounded-md flex items-center justify-center gap-1.5 transition-colors self-start sm:self-auto"
             >
-              <Plus size={15} strokeWidth={2.5} /> Add Category Node
+              <Plus size={14} strokeWidth={2} /> Add Category
             </button>
           </div>
 
-          {/* DYNAMIC INTEGRATED GRID RENDER VIA ORIGINAL SPEC METRICCARDS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+          {/* SYSTEM OVERVIEW METRICS GRID */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard title="Total Groupings" value={metrics.total} trend="+4% this wk" trendUp={true} icon={Layers} isPrimary={true} />
             <MetricCard title="Active Channels" value={metrics.active} trend="+12% MoM" trendUp={true} icon={Eye} />
             <MetricCard title="Featured Nodes" value={metrics.featured} trend="-2% vs yesterday" trendUp={false} icon={ShoppingCart} />
-            <MetricCard title="Aggregated Storage Units" value={metrics.totalVolume.toLocaleString()} trend="Optimal Capacity" trendUp={true} icon={Receipt} />
+            <MetricCard title="Storage Volume" value={metrics.totalVolume.toLocaleString()} trend="Optimal Capacity" trendUp={true} icon={Receipt} />
           </div>
 
-          {/* SEARCH CRITERIA BLOCK MOUNTED ON ORIGINAL GLASSCARD OBJECT LAYER */}
-          <GlassCard className="p-4 flex flex-col md:flex-row gap-4 justify-between items-center mb-6">
-            <div className="relative w-full md:max-w-md">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+          {/* FILTERING MATRIX LAYER */}
+          <div className="border border-[#eeeeee] p-3 flex flex-col md:flex-row gap-4 justify-between items-center rounded-md bg-white">
+            <div className="relative w-full md:max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#777777]" size={13} />
               <input
                 type="text"
-                placeholder="Query category nomenclature or identifier slug..."
+                placeholder="Filter by name or identifier slug..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-slate-50/50 border border-gray-200 rounded-xl py-2.5 pl-11 pr-4 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all text-black placeholder:text-gray-400"
+                className="w-full bg-white border border-[#dddddd] rounded-md h-8 pl-8 pr-3 text-[12px] font-normal focus:outline-none focus:border-black transition-colors text-black placeholder:text-[#999999]"
               />
             </div>
             
-            <div className="flex gap-1 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+            <div className="flex items-center gap-1 w-full md:w-auto overflow-x-auto no-scrollbar">
               {["All", "Unisex", "Men", "Women", "Kids"].map((audience) => (
                 <button
                   key={audience}
                   onClick={() => setSelectedAudience(audience)}
-                  className={`px-3.5 py-1.5 rounded-lg text-[10px] font-black tracking-wider uppercase transition-all whitespace-nowrap ${selectedAudience === audience ? 'bg-black text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-black hover:bg-gray-100/60'}`}
+                  className={`px-2.5 h-7 rounded-md text-[11px] font-medium transition-colors whitespace-nowrap ${
+                    selectedAudience === audience 
+                      ? 'bg-black text-white' 
+                      : 'text-[#555555] hover:text-black hover:bg-black/[0.04]'
+                  }`}
                 >
                   {audience}
                 </button>
               ))}
             </div>
-          </GlassCard>
+          </div>
 
-          {/* MAIN ADMINISTRATIVE LOGISTICS VIEW PANEL */}
-          <div className="overflow-x-auto rounded-2xl border border-gray-100 shadow-xs bg-white">
+          {/* CORE ARCHITECTURAL METADATA SHEET TABLE */}
+          <div className="overflow-x-auto border border-[#eeeeee] rounded-md bg-white">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50/70 border-b border-gray-100 text-[9px] font-black tracking-widest text-gray-400 uppercase">
-                  <th className="p-4 pl-6">Nomenclature & Identity</th>
-                  <th className="p-4">Structural Node</th>
-                  <th className="p-4">Target Matrix</th>
-                  <th className="p-4 text-center">Active Status</th>
-                  <th className="p-4 text-center">Featured Status</th>
-                  <th className="p-4 text-right pr-6">Action Matrix</th>
+                <tr className="border-b border-[#eeeeee] text-[11px] font-semibold text-[#555555] tracking-wide">
+                  <th className="py-3 px-4 pl-5">Nomenclature & Identity</th>
+                  <th className="py-3 px-4 w-40">Structural Node</th>
+                  <th className="py-3 px-4 w-32">Target Matrix</th>
+                  <th className="py-3 px-4 text-center w-32">Active</th>
+                  <th className="py-3 px-4 text-center w-32">Featured</th>
+                  <th className="py-3 px-4 text-right pr-5 w-28">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 text-xs font-semibold text-slate-600">
+              <tbody className="divide-y divide-[#eeeeee] text-[13px] text-black">
                 {filteredCategories.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="p-12 text-center text-gray-400 font-bold uppercase tracking-wider">
-                      No operational records found matching search queries.
+                    <td colSpan="6" className="py-12 text-center text-[#777777] font-medium tracking-wide">
+                      No operational records found matching filter constraints.
                     </td>
                   </tr>
                 ) : (
                   filteredCategories.map((category) => (
-                    <tr key={category.id} className="hover:bg-slate-50/30 transition-colors group">
-                      <td className="p-4 pl-6">
+                    <tr key={category.id} className="hover:bg-black/[0.01] transition-colors duration-500">
+                      <td className="py-3.5 px-4 pl-5">
                         <div className="flex items-center gap-3">
                           {category.image_url ? (
-                            <img src={category.image_url} alt={category.name} className="w-9 h-9 rounded-xl object-cover border border-gray-100 shadow-2xs" />
+                            <img src={category.image_url} alt="" className="w-8 h-8 rounded-sm object-cover border border-[#eeeeee] bg-[#fcfcfc]" />
                           ) : (
-                            <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-black font-black text-[10px]">
+                            <div className="w-8 h-8 rounded-sm bg-black/[0.04] flex items-center justify-center text-black font-semibold text-[11px]">
                               {category.name?.substring(0, 2).toUpperCase()}
                             </div>
                           )}
                           <div>
-                            <div className="font-bold text-black text-sm leading-snug">{category.name}</div>
-                            <div className="text-gray-400 text-[10px] font-mono tracking-tight">{category.slug}</div>
+                            <div className="font-medium text-[13px] text-black tracking-wide leading-tight">{category.name}</div>
+                            <div className="text-[#777777] text-[11px] font-mono mt-0.5">{category.slug}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="p-4">
-                        <span className="px-2.5 py-1 rounded-md text-[9px] font-black tracking-wide uppercase bg-slate-100 text-slate-600 border border-slate-200/40">
+                      <td className="py-3.5 px-4">
+                        <span className="bg-black/[0.04] text-black border border-black/[0.03] px-1.5 py-0.5 rounded-sm text-[11px] font-medium">
                           {category.classification_node || 'Parent Node'}
                         </span>
                       </td>
-                      <td className="p-4">
-                        <span className="text-slate-500 font-bold text-[10px] uppercase tracking-wider">{category.target_audience}</span>
+                      <td className="py-3.5 px-4 text-[#555555] font-normal">
+                        {category.target_audience}
                       </td>
-                      <td className="p-4 text-center">
-                        <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${category.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}`}>
-                          <Check size={12} strokeWidth={category.is_active ? 3 : 1} />
+                      <td className="py-3.5 px-4 text-center">
+                        <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full ${category.is_active ? 'text-[#00875a]' : 'text-[#de350b]'}`}>
+                          <Check size={14} strokeWidth={category.is_active ? 3 : 1} />
                         </span>
                       </td>
-                      <td className="p-4 text-center">
-                        <span className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${category.is_featured ? 'bg-amber-50 text-amber-600 border border-amber-200/50' : 'text-gray-300'}`}>
+                      <td className="py-3.5 px-4 text-center">
+                        <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded-sm ${category.is_featured ? 'bg-[#fffae6] text-[#b35900]' : 'text-[#999999]'}`}>
                           {category.is_featured ? 'Featured' : 'Standard'}
                         </span>
                       </td>
-                      <td className="p-4 text-right pr-6">
-                        <div className="flex items-center justify-end gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => openDrawer(category)} className="p-2 text-gray-400 hover:text-black hover:bg-gray-100 rounded-lg transition-all">
+                      <td className="py-3.5 px-4 text-right pr-5">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button onClick={() => openDrawer(category)} className="p-1.5 border border-transparent hover:border-[#dddddd] text-[#555555] hover:text-black rounded-md transition-colors">
                             <Edit2 size={13} />
                           </button>
-                          <button onClick={() => handleDeleteCategory(category.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
+                          <button onClick={() => handleDeleteCategory(category.id)} className="p-1.5 border border-transparent hover:border-red-200 text-[#555555] hover:text-[#de350b] rounded-md transition-colors">
                             <Trash2 size={13} />
                           </button>
                         </div>
@@ -302,44 +296,45 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
         </main>
       </div>
 
-      {/* --- SMOOTH TRANSITION SLIDE-OVER CONTROL DRAWER PANEL --- */}
-      <div className={`fixed inset-0 z-50 flex justify-end transition-opacity duration-300 ease-in-out ${isDrawerOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
-        <div className="absolute inset-0 bg-black/30 backdrop-blur-xs" onClick={() => setIsDrawerOpen(false)} />
+      {/* --- SIDE CONTROL SLIDE DRAWER COMPONENT --- */}
+      <div className={`fixed inset-0 z-50 flex justify-end transition-all duration-300 ${isDrawerOpen ? "visible" : "invisible opacity-0"}`}>
+        <div className="absolute inset-0 bg-black/20" onClick={() => setIsDrawerOpen(false)} />
         
-        {/* Slids over cleanly along X axis */}
-        <div className={`relative w-full max-w-lg h-full bg-white shadow-2xl flex flex-col z-10 transition-transform duration-300 ease-out transform border-l border-gray-100 ${isDrawerOpen ? "translate-x-0" : "translate-x-full"}`}>
+        <div className={`relative w-full max-w-md h-full bg-white border-l border-black/10 flex flex-col z-10 transition-transform duration-300 ease-out transform ${isDrawerOpen ? "translate-x-0" : "translate-x-full"}`}>
           
-          <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50/50">
+          {/* Drawer Header */}
+          <div className="p-5 border-b border-[#eeeeee] flex justify-between items-center bg-white sticky top-0 z-10">
             <div>
-              <h2 className="text-lg font-black tracking-tight text-black">
+              <h2 className="text-[14px] font-semibold tracking-wide text-black">
                 {formData.id ? "Modify Node Parameters" : "Provision New Category"}
               </h2>
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Database Write Interface</p>
+              <p className="text-[11px] text-[#777777] font-normal mt-0.5">Database Write Manifest Interface</p>
             </div>
-            <button onClick={() => setIsDrawerOpen(false)} className="p-2 text-gray-400 hover:text-black hover:bg-gray-200/60 rounded-xl transition-all">
-              <X size={18} />
+            <button onClick={() => setIsDrawerOpen(false)} className="p-1.5 text-[#777777] hover:text-black hover:bg-black/[0.04] rounded-md transition-colors">
+              <X size={15} />
             </button>
           </div>
 
-          <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto p-6 space-y-5 text-xs font-semibold text-slate-800 scrollbar-thin">
+          {/* Main Form Fields Container */}
+          <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto p-5 space-y-4 text-[12px] text-black font-normal no-scrollbar">
             {globalError && (
-              <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 font-bold tracking-wide">
+              <div className="p-3 bg-red-50 border border-red-100 rounded-md text-[#de350b] font-medium">
                 Transaction Failure: {globalError}
               </div>
             )}
 
-            {/* COMPUTER LOCAL FILE MEDIA LOADER & CLEAN REMOVE MECHANISM */}
+            {/* MEDIA ASSET CONTAINER */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Media Cover Asset</label>
+              <label className="block text-[11px] font-semibold text-[#555555] tracking-wide">Media Cover Asset</label>
               
               {formData.image_url ? (
-                <div className="relative group rounded-2xl border border-gray-100 overflow-hidden shadow-2xs h-40 bg-slate-50">
-                  <img src={formData.image_url} alt="Uploaded Media Preview" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <div className="relative group rounded-md border border-[#eeeeee] overflow-hidden h-36 bg-[#fcfcfc]">
+                  <img src={formData.image_url} alt="" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <button
                       type="button"
                       onClick={handleRemoveImage}
-                      className="bg-white hover:bg-red-50 text-red-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors shadow-sm"
+                      className="bg-white hover:bg-red-50 text-[#de350b] border border-[#dddddd] px-3 h-7 rounded-md text-[11px] font-medium transition-colors shadow-sm"
                     >
                       Purge File From Record
                     </button>
@@ -348,163 +343,166 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
               ) : (
                 <div 
                   onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed border-gray-200 hover:border-black rounded-2xl p-6 text-center cursor-pointer transition-all bg-slate-50/50 flex flex-col items-center justify-center h-40 ${uploadingMedia ? "opacity-50 pointer-events-none" : ""}`}
+                  className={`border border-dashed border-[#dddddd] hover:border-black rounded-md p-5 text-center cursor-pointer transition-colors bg-[#fcfcfc] flex flex-col items-center justify-center h-36 ${uploadingMedia ? "opacity-40 pointer-events-none" : ""}`}
                 >
-                  <input 
-                    type="file" 
-                    ref={fileInputRef}
-                    accept="image/*" 
-                    onChange={handleLocalImageUpload} 
-                    className="hidden" 
-                  />
-                  <UploadCloud size={28} className="text-gray-400 mb-2 group-hover:text-black transition-colors" />
-                  <span className="font-bold text-slate-700 text-xs">
-                    {uploadingMedia ? "Writing Raw Bytes to Storage..." : "Upload from Computer"}
+                  <input type="file" ref={fileInputRef} accept="image/*" onChange={handleLocalImageUpload} className="hidden" />
+                  <UploadCloud size={22} className="text-[#777777] mb-1.5" />
+                  <span className="font-medium text-black text-[12px]">
+                    {uploadingMedia ? "Writing Raw Bytes..." : "Upload local asset file"}
                   </span>
-                  <span className="text-[9px] text-gray-400 mt-1 uppercase tracking-widest font-bold">PNG, JPG, WEBP up to 5MB</span>
+                  <span className="text-[10px] text-[#888888] mt-0.5 font-normal">PNG, JPG, WEBP up to 5MB</span>
                 </div>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Node Name</label>
+            {/* INPUT MATRIX FIELDS */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="block text-[11px] font-semibold text-[#555555] tracking-wide">Node Name</label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full bg-slate-50/70 border border-gray-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all"
-                  placeholder="e.g., Premium Leather Jackets"
+                  className="w-full bg-white border border-[#dddddd] rounded-md h-8 px-3 text-[12px] font-medium focus:outline-none focus:border-black transition-colors text-black placeholder:text-[#999999]"
+                  placeholder="e.g., Leather Jackets"
                 />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Slug Key (URL Identifier)</label>
+              <div className="space-y-1">
+                <label className="block text-[11px] font-semibold text-[#555555] tracking-wide">Slug Key (URL)</label>
                 <input
                   type="text"
                   required
                   value={formData.slug}
                   onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/ /g, "-") })}
-                  className="w-full bg-slate-50/70 border border-gray-200 rounded-xl p-3 font-mono text-[11px] focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all"
-                  placeholder="premium-leather-jackets"
+                  className="w-full bg-white border border-[#dddddd] rounded-md h-8 px-3 font-mono text-[11px] focus:outline-none focus:border-black transition-colors text-black placeholder:text-[#999999]"
+                  placeholder="leather-jackets"
                 />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Public Overview Description</label>
+            <div className="space-y-1">
+              <label className="block text-[11px] font-semibold text-[#555555] tracking-wide">Overview Description</label>
               <textarea
                 rows="2"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full bg-slate-50/70 border border-gray-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all resize-none"
-                placeholder="Articulate details regarding structural classification parameters..."
+                className="w-full bg-white border border-[#dddddd] rounded-md p-2 text-[12px] focus:outline-none focus:border-black transition-colors text-black resize-none placeholder:text-[#999999]"
+                placeholder="Articulate metadata details regarding structural configuration..."
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Classification Level</label>
-                <select
-                  value={formData.classification_node}
-                  onChange={(e) => setFormData({ ...formData, classification_node: e.target.value })}
-                  className="w-full bg-slate-50/70 border border-gray-200 rounded-xl p-3 font-medium focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all"
-                >
-                  <option value="Parent Category">Parent Structural Node</option>
-                  <option value="Sub Category">Sub-Category Cluster</option>
-                  <option value="Collection Set">Exclusive Collection Capsule</option>
-                </select>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="block text-[11px] font-semibold text-[#555555] tracking-wide">Classification Level</label>
+                <div className="relative w-full">
+                  <select
+                    value={formData.classification_node}
+                    onChange={(e) => setFormData({ ...formData, classification_node: e.target.value })}
+                    className="w-full appearance-none h-8 pl-3 pr-8 text-[12px] font-medium bg-white border border-[#dddddd] rounded-md focus:outline-none focus:border-black text-black transition-colors"
+                  >
+                    <option value="Parent Category">Parent Structural Node</option>
+                    <option value="Sub Category">Sub-Category Cluster</option>
+                    <option value="Collection Set">Exclusive Collection</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-[#777777] pointer-events-none" />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Target Segment</label>
-                <select
-                  value={formData.target_audience}
-                  onChange={(e) => setFormData({ ...formData, target_audience: e.target.value })}
-                  className="w-full bg-slate-50/70 border border-gray-200 rounded-xl p-3 font-medium focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all"
-                >
-                  <option value="Unisex">Unisex Matrix</option>
-                  <option value="Men">Men Segmentation</option>
-                  <option value="Women">Women Segmentation</option>
-                  <option value="Kids">Kids Department</option>
-                </select>
+              <div className="space-y-1">
+                <label className="block text-[11px] font-semibold text-[#555555] tracking-wide">Target Segment</label>
+                <div className="relative w-full">
+                  <select
+                    value={formData.target_audience}
+                    onChange={(e) => setFormData({ ...formData, target_audience: e.target.value })}
+                    className="w-full appearance-none h-8 pl-3 pr-8 text-[12px] font-medium bg-white border border-[#dddddd] rounded-md focus:outline-none focus:border-black text-black transition-colors"
+                  >
+                    <option value="Unisex">Unisex Matrix</option>
+                    <option value="Men">Men Segmentation</option>
+                    <option value="Women">Women Segmentation</option>
+                    <option value="Kids">Kids Department</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-[#777777] pointer-events-none" />
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Volume Resource Units</label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="block text-[11px] font-semibold text-[#555555] tracking-wide">Volume Units</label>
                 <input
                   type="number"
                   value={formData.volume_units}
                   onChange={(e) => setFormData({ ...formData, volume_units: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-slate-50/70 border border-gray-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all"
+                  className="w-full bg-white border border-[#dddddd] rounded-md h-8 px-3 text-[12px] font-medium focus:outline-none focus:border-black transition-colors text-black"
                 />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Display Sorting Priority</label>
+              <div className="space-y-1">
+                <label className="block text-[11px] font-semibold text-[#555555] tracking-wide">Sorting Priority</label>
                 <input
                   type="number"
                   value={formData.display_priority}
                   onChange={(e) => setFormData({ ...formData, display_priority: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-slate-50/70 border border-gray-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all"
+                  className="w-full bg-white border border-[#dddddd] rounded-md h-8 px-3 text-[12px] font-medium focus:outline-none focus:border-black transition-colors text-black"
                 />
               </div>
             </div>
 
-            <div className="pt-2 border-t border-gray-100 space-y-3">
-              <p className="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Search Engine Optimization (SEO)</p>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Keywords</label>
+            <div className="pt-2 border-t border-[#eeeeee] space-y-2">
+              <p className="text-[10px] font-bold tracking-widest text-[#777777] uppercase">Search Engine Optimization (SEO)</p>
+              <div className="space-y-1">
+                <label className="block text-[11px] font-semibold text-[#555555] tracking-wide">Keywords</label>
                 <input
                   type="text"
                   value={formData.seo_keywords}
                   onChange={(e) => setFormData({ ...formData, seo_keywords: e.target.value })}
-                  className="w-full bg-slate-50/70 border border-gray-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all"
+                  className="w-full bg-white border border-[#dddddd] rounded-md h-8 px-3 focus:outline-none focus:border-black transition-colors text-black placeholder:text-[#999999]"
                   placeholder="leather, coats, minimal fashion"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-1">
-              <label className="flex items-center gap-3 p-3 bg-slate-50/50 rounded-xl border border-gray-100 cursor-pointer select-none hover:bg-slate-50 transition-colors">
+            {/* SELECTION BOOLEAN CHECKBOX MATRIX */}
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <label className="flex items-center gap-2.5 p-2.5 border border-[#eeeeee] rounded-md cursor-pointer select-none bg-white hover:bg-black/[0.01] transition-colors">
                 <input
                   type="checkbox"
                   checked={formData.is_active}
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="accent-black w-4 h-4 rounded-md"
+                  className="accent-black w-3.5 h-3.5 rounded-sm"
                 />
                 <div>
-                  <div className="font-bold text-black text-xs">Active Status</div>
-                  <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Visible Publicly</div>
+                  <div className="font-semibold text-black text-[12px]">Active Status</div>
+                  <div className="text-[10px] text-[#777777] font-normal mt-0.5">Publicly visible</div>
                 </div>
               </label>
 
-              <label className="flex items-center gap-3 p-3 bg-slate-50/50 rounded-xl border border-gray-100 cursor-pointer select-none hover:bg-slate-50 transition-colors">
+              <label className="flex items-center gap-2.5 p-2.5 border border-[#eeeeee] rounded-md cursor-pointer select-none bg-white hover:bg-black/[0.01] transition-colors">
                 <input
                   type="checkbox"
                   checked={formData.is_featured}
                   onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })}
-                  className="accent-black w-4 h-4 rounded-md"
+                  className="accent-black w-3.5 h-3.5 rounded-sm"
                 />
                 <div>
-                  <div className="font-bold text-black text-xs">Highlight Banner</div>
-                  <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Promoted Node</div>
+                  <div className="font-semibold text-black text-[12px]">Highlight Banner</div>
+                  <div className="text-[10px] text-[#777777] font-normal mt-0.5">Promoted node</div>
                 </div>
               </label>
             </div>
 
-            <div className="pt-3 flex gap-3">
+            {/* TRIGGER CONTROL ACTIONS */}
+            <div className="pt-4 flex gap-2 border-t border-[#eeeeee] sticky bottom-0 bg-white">
               <button
                 type="button"
                 onClick={() => setIsDrawerOpen(false)}
-                className="flex-1 border border-gray-200 hover:bg-gray-50 text-black font-bold uppercase tracking-widest p-3.5 rounded-xl transition-colors text-[10px]"
+                className="flex-1 border border-[#dddddd] bg-white hover:border-black text-black font-medium h-9 rounded-md transition-colors text-[12px]"
               >
                 Discard
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="flex-1 bg-black hover:bg-neutral-800 disabled:bg-neutral-400 text-white font-bold uppercase tracking-widest p-3.5 rounded-xl transition-all text-[10px]"
+                className="flex-1 bg-black hover:bg-neutral-900 disabled:bg-neutral-400 text-white font-medium h-9 rounded-md transition-colors text-[12px]"
               >
                 {isSaving ? "Processing..." : "Commit Structure"}
               </button>

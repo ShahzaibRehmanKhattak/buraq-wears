@@ -10,16 +10,16 @@ export function ProductTable({ products = [], categories = [], onEdit, onDelete 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // 3-Second Search Debouncer to optimize performance
+  // Reduced down to a standard 300ms delay to keep the interface highly responsive
   useEffect(() => {
     const delayTimer = setTimeout(() => {
       setDebouncedSearch(searchInput);
-    }, 3000);
+    }, 300);
 
     return () => clearTimeout(delayTimer);
   }, [searchInput]);
 
-  // SMART FALLBACK SYSTEM: If categories array is empty, automatically build tabs from your product data
+  // Fallback System: Dynamically build categories from array structures if needed
   const finalTabsList = useMemo(() => {
     if (categories && categories.length > 0) {
       return categories.map(cat => (cat.name || cat.title || String(cat)).trim()).filter(Boolean);
@@ -36,9 +36,9 @@ export function ProductTable({ products = [], categories = [], onEdit, onDelete 
     return Array.from(uniqueCats);
   }, [categories, products]);
 
-  // Combined Filter Architecture: Filters products by both tab selection and search input
+  // Filter Pipeline: Handles real-time cross-tab query parsing
   const filteredProducts = useMemo(() => {
-    setCurrentPage(1); // Reset page layout index during filter changes
+    setCurrentPage(1);
     
     return products.filter((product) => {
       if (!product) return false;
@@ -47,10 +47,8 @@ export function ProductTable({ products = [], categories = [], onEdit, onDelete 
       const normalizedProductCat = String(rawProductCat).toLowerCase().trim();
       const normalizedTargetTab = selectedCategoryTab.toLowerCase().trim();
       
-      // 1. Tab Filtering System
       const matchesTab = selectedCategoryTab === 'ALL' || normalizedProductCat === normalizedTargetTab;
       
-      // 2. Search Input Query Match
       const normalizedSearch = debouncedSearch.toLowerCase().trim();
       const matchesSearch = normalizedSearch === '' || 
         (product.title && product.title.toLowerCase().includes(normalizedSearch)) ||
@@ -62,7 +60,7 @@ export function ProductTable({ products = [], categories = [], onEdit, onDelete 
     });
   }, [products, debouncedSearch, selectedCategoryTab]);
 
-  // Pagination Lookups
+  // Structural Pagination Computations
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1;
   const paginatedProducts = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -70,20 +68,20 @@ export function ProductTable({ products = [], categories = [], onEdit, onDelete 
   }, [filteredProducts, currentPage]);
 
   return (
-    <div className="w-full flex flex-col gap-4 text-gray-800 font-sans antialiased">
+    <div className="w-full flex flex-col text-black font-sans antialiased bg-white">
       
-      {/* ----------------- CONTROL NAVIGATION HEADER (CLEAN TABS) ----------------- */}
-      <div className="bg-white p-3 md:p-4 rounded-xl border border-gray-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4 w-full overflow-hidden">
+      {/* CONTROL ACTIONS & NAVIGATION MANIFEST ROW */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#eeeeee] p-4 gap-4 bg-white">
         
-        {/* Clean Category Navigation Panel (Supports native smooth horizontal swiping layout on mobile) */}
-        <div className="w-full lg:w-auto overflow-x-auto scrollbar-none flex items-center">
-          <div className="flex flex-nowrap gap-1.5 p-1 bg-gray-50 rounded-xl border border-gray-100 min-w-max">
+        {/* Crisp Linear Category Tabs */}
+        <div className="overflow-x-auto no-scrollbar flex items-center max-w-full">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => setSelectedCategoryTab('ALL')}
-              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all tracking-wide shrink-0 ${
+              className={`h-8 px-3 text-[12px] font-medium rounded-md transition-colors whitespace-nowrap ${
                 selectedCategoryTab === 'ALL'
-                  ? 'bg-black text-white shadow-sm'
-                  : 'bg-white text-gray-500 hover:text-black border border-gray-200/60 shadow-sm hover:border-gray-300'
+                  ? 'bg-black text-white'
+                  : 'text-[#555555] hover:text-black hover:bg-black/[0.04]'
               }`}
             >
               All Inventory
@@ -96,10 +94,10 @@ export function ProductTable({ products = [], categories = [], onEdit, onDelete 
                 <button
                   key={tabName}
                   onClick={() => setSelectedCategoryTab(tabName)}
-                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-all tracking-wide whitespace-nowrap capitalize shrink-0 ${
+                  className={`h-8 px-3 text-[12px] font-medium rounded-md transition-colors whitespace-nowrap capitalize ${
                     isActive
-                      ? 'bg-black text-white shadow-sm'
-                      : 'bg-white text-gray-500 hover:text-black border border-gray-200/60 shadow-sm hover:border-gray-300'
+                      ? 'bg-black text-white'
+                      : 'text-[#555555] hover:text-black hover:bg-black/[0.04]'
                   }`}
                 >
                   {tabName}
@@ -109,164 +107,164 @@ export function ProductTable({ products = [], categories = [], onEdit, onDelete 
           </div>
         </div>
 
-        {/* Dynamic Live Text Search Bar */}
-        <div className="relative w-full lg:max-w-xs shrink-0">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        {/* Dense Minimal Input Search Node */}
+        <div className="relative w-full sm:max-w-[260px] shrink-0">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#888888]" />
           <input
             type="text"
-            placeholder="Search titles, SKUs, or categories..."
+            placeholder="Search items, codes..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="w-full pl-9 pr-16 py-2 text-xs font-medium bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 focus:bg-white transition-all text-black placeholder-gray-400"
+            className="w-full h-8 pl-8 pr-12 text-[12px] font-medium bg-white border border-[#dddddd] rounded-md focus:outline-none focus:border-black transition-colors text-black placeholder-[#888888]"
           />
           {searchInput !== debouncedSearch && (
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-gray-500 animate-pulse tracking-wider">
-              WAITING...
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-bold text-[#999999] tracking-wider uppercase">
+              ...
             </span>
           )}
         </div>
       </div>
 
-      {/* ----------------- LEAN BORDERLESS INTERIOR DATA TABLE ----------------- */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden flex flex-col w-full">
-        <div className="overflow-x-auto w-full">
-          <table className="w-full text-left border-collapse min-w-[800px] lg:min-w-full">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50 text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                <th className="py-4 px-4 md:px-6">Product Details</th>
-                <th className="py-4 px-4 md:px-6">SKU Reference</th>
-                <th className="py-4 px-4 md:px-6">Category Relation</th>
-                <th className="py-4 px-4 md:px-6">Price Point</th>
-                <th className="py-4 px-4 md:px-6">Stock Allocation</th>
-                <th className="py-4 px-4 md:px-6">Visibility</th>
-                <th className="py-4 px-4 md:px-6 text-right">Actions Matrix</th>
+      {/* RETAIL ASSET MATRIX WORKSPACE */}
+      <div className="overflow-x-auto w-full">
+        <table className="w-full text-left border-collapse min-w-[850px] lg:min-w-full">
+          <thead>
+            <tr className="border-b border-[#eeeeee] bg-[#fafafa] text-[10px] font-bold uppercase tracking-wider text-[#666666]">
+              <th className="h-10 px-5 vertical-align-middle">Product Details</th>
+              <th className="h-10 px-5 vertical-align-middle">SKU Index</th>
+              <th className="h-10 px-5 vertical-align-middle">Classification</th>
+              <th className="h-10 px-5 vertical-align-middle">MSRP Price</th>
+              <th className="h-10 px-5 vertical-align-middle">Stock Allocation</th>
+              <th className="h-10 px-5 vertical-align-middle">Visibility</th>
+              <th className="h-10 px-5 vertical-align-middle text-right">Actions Matrix</th>
+            </tr>
+          </thead>
+          <tbody className="text-[12px] font-medium text-[#222222]">
+            {paginatedProducts.length === 0 ? (
+              <tr>
+                <td colSpan="7" className="text-center py-16 text-[#888888] font-normal italic bg-white">
+                  No active registration logs match selected operational matrices.
+                </td>
               </tr>
-            </thead>
-            <tbody className="text-xs font-medium text-gray-700">
-              {paginatedProducts.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="text-center py-12 text-gray-400 font-normal italic">
-                    No registry assets found matching this active category layout parameter.
-                  </td>
-                </tr>
-              ) : (
-                paginatedProducts.map((product) => {
-                  const displayCategoryName = product.category_id || product.categoryId || product.category || "Unassigned";
+            ) : (
+              paginatedProducts.map((product) => {
+                const displayCategoryName = product.category_id || product.categoryId || product.category || "Unassigned";
 
-                  return (
-                    <tr key={product.id} className="hover:bg-gray-50/70 transition-colors group">
-                      
-                      {/* Product details thumbnail block */}
-                      <td className="py-4 px-4 md:px-6 flex items-center gap-4">
-                        <div className="w-10 h-12 rounded-lg bg-gray-50 border border-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center text-gray-400">
-                          {product.images && product.images[0] ? (
-                            <img src={product.images[0]} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <ImageIcon className="w-3.5 h-3.5" />
-                          )}
-                        </div>
-                        <div>
-                          <h4 
-                            className="font-bold text-gray-900 tracking-tight hover:text-gray-600 cursor-pointer transition-colors"
-                            onClick={() => onEdit && onEdit(product)}
-                          >
-                            {product.title || product.name}
-                          </h4>
-                          <p className="text-[10px] text-gray-400 font-mono mt-0.5 max-w-[150px] truncate">{product.slug}</p>
-                        </div>
-                      </td>
-
-                      {/* SKU Column */}
-                      <td className="py-4 px-4 md:px-6 text-gray-500 font-mono tracking-tight">
-                        {product.sku || '—'}
-                      </td>
-
-                      {/* Category Badge Column */}
-                      <td className="py-4 px-4 md:px-6">
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-gray-50 text-gray-700 border border-gray-200 group-hover:border-gray-300 transition-colors">
-                          <Table2 className="w-3.5 h-3.5 text-gray-400" />
-                          <span className="font-sans font-normal text-gray-600 capitalize">{displayCategoryName}</span>
-                        </div>
-                      </td>
-
-                      {/* Financial Price Metric */}
-                      <td className="py-4 px-4 md:px-6 font-bold text-gray-900">
-                        ${Number(product.price || 0).toFixed(2)}
-                      </td>
-
-                      {/* Inventory Stock Tracker Status */}
-                      <td className="py-4 px-4 md:px-6">
-                        <span className={`font-bold ${(product.stock_qty || product.stock || 0) <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
-                          {product.stock_qty || product.stock || 0} units
-                        </span>
-                      </td>
-
-                      {/* Production Visibility Switches */}
-                      <td className="py-4 px-4 md:px-6">
-                        {(product.is_active || product.status === 'Active') ? (
-                          <span className="px-2 py-0.5 rounded text-[10px] bg-green-50 text-green-700 border border-green-200 font-bold uppercase tracking-wider">
-                            Active
-                          </span>
+                return (
+                  <tr key={product.id} className="border-b border-[#eeeeee] last:border-0 hover:bg-black/[0.01] transition-colors group">
+                    
+                    {/* Primary Product Detail Block */}
+                    <td className="py-3 px-5 flex items-center gap-3">
+                      <div className="w-8 h-10 rounded-md bg-[#fafafa] border border-[#eeeeee] overflow-hidden shrink-0 flex items-center justify-center text-[#888888]">
+                        {product.images && product.images[0] ? (
+                          <img src={product.images[0]} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <span className="px-2 py-0.5 rounded text-[10px] bg-gray-100 text-gray-500 border border-gray-200 font-bold uppercase tracking-wider">
-                            Hidden
-                          </span>
+                          <ImageIcon className="w-3.5 h-3.5" />
                         )}
-                      </td>
+                      </div>
+                      <div className="min-w-0">
+                        <h4 
+                          className="font-semibold text-black tracking-wide truncate max-w-[220px] hover:underline cursor-pointer"
+                          onClick={() => onEdit && onEdit(product)}
+                        >
+                          {product.title || product.name}
+                        </h4>
+                        <p className="text-[10px] text-[#777777] font-mono mt-0.5 truncate max-w-[140px] uppercase tracking-tight">{product.slug}</p>
+                      </div>
+                    </td>
 
-                      {/* Action Triggers */}
-                      <td className="py-4 px-4 md:px-6 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button 
-                            onClick={() => onEdit && onEdit(product)}
-                            className="p-2 text-gray-400 hover:text-black hover:bg-gray-100 rounded-lg transition-all"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                          <button 
-                            onClick={() => onDelete && onDelete(product.id)}
-                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                    {/* Alphanumeric SKU Mapping */}
+                    <td className="py-3 px-5 text-[#555555] font-mono tracking-tight">
+                      {product.sku || '—'}
+                    </td>
 
-        {/* ----------------- CLEAN FOOTER PAGINATION CONTAINER ----------------- */}
-        {filteredProducts.length > 0 && (
-          <div className="border-t border-gray-200 px-4 md:px-6 py-4 flex flex-col sm:flex-row gap-4 items-center justify-between bg-gray-50 w-full">
-            <p className="text-xs text-gray-500 font-medium text-center sm:text-left">
-              Showing <span className="font-bold text-gray-800">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-bold text-gray-800">{Math.min(currentPage * itemsPerPage, filteredProducts.length)}</span> of <span className="font-bold text-gray-800">{filteredProducts.length}</span> nodes
-            </p>
-            <div className="flex items-center gap-2">
+                    {/* Context Relationship Node */}
+                    <td className="py-3 px-5">
+                      <div className="inline-flex items-center gap-1 text-[#555555]">
+                        <Table2 className="w-3.5 h-3.5 text-[#999999]" />
+                        <span className="capitalize text-[12px]">{displayCategoryName}</span>
+                      </div>
+                    </td>
+
+                    {/* Financial Ledger Index */}
+                    <td className="py-3 px-5 font-semibold text-black">
+                      ${Number(product.price || 0).toFixed(2)}
+                    </td>
+
+                    {/* System Quantity Evaluation Status */}
+                    <td className="py-3 px-5">
+                      <span className={`font-medium ${(product.stock_qty || product.stock || 0) <= 0 ? 'text-[#de350b]' : 'text-black'}`}>
+                        {product.stock_qty || product.stock || 0} units
+                      </span>
+                    </td>
+
+                    {/* Deployment Visibility Switches */}
+                    <td className="py-3 px-5">
+                      {(product.is_active || product.status === 'Active') ? (
+                        <span className="px-1.5 py-0.5 rounded-sm text-[10px] bg-green-50 text-green-700 border border-green-200 font-medium uppercase tracking-wide">
+                          Active
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 rounded-sm text-[10px] bg-gray-100 text-[#555555] border border-gray-200 font-medium uppercase tracking-wide">
+                          Hidden
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Modifiers Access Node */}
+                    <td className="py-3 px-5 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button 
+                          onClick={() => onEdit && onEdit(product)}
+                          className="p-1.5 text-[#777777] hover:text-black hover:bg-black/[0.04] rounded-md transition-colors"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button 
+                          onClick={() => onDelete && onDelete(product.id)}
+                          className="p-1.5 text-[#777777] hover:text-[#de350b] hover:bg-red-50 rounded-md transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* MATRIX CONTROL FOOTER RECORD SYSTEM */}
+      {filteredProducts.length > 0 && (
+        <div className="border-t border-[#eeeeee] px-5 py-3 flex flex-col sm:flex-row gap-4 items-center justify-between bg-[#fafafa] w-full">
+          <p className="text-[12px] text-[#555555] font-medium">
+            Showing <span className="font-semibold text-black">{(currentPage - 1) * itemsPerPage + 1}</span>–<span className="font-semibold text-black">{Math.min(currentPage * itemsPerPage, filteredProducts.length)}</span> of <span className="font-semibold text-black">{filteredProducts.length}</span> registry rows
+          </p>
+          <div className="flex items-center gap-3">
+            <span className="text-[12px] text-[#555555]">
+              Page {currentPage} of {totalPages}
+            </span>
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-500 disabled:opacity-40 transition-all"
+                className="h-7 w-7 flex items-center justify-center rounded-md border border-[#dddddd] bg-white text-[#555555] disabled:opacity-30 hover:border-black transition-colors"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-3.5 h-3.5" />
               </button>
-              <span className="text-xs font-bold text-gray-600 px-1 select-none">
-                Page {currentPage} of {totalPages}
-              </span>
               <button
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
-                className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-500 disabled:opacity-40 transition-all"
+                className="h-7 w-7 flex items-center justify-center rounded-md border border-[#dddddd] bg-white text-[#555555] disabled:opacity-30 hover:border-black transition-colors"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
