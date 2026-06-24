@@ -52,8 +52,7 @@ export default function ShirtsPage() {
       <GlobalStyles />
       
       {/* Brand Aesthetic Banner Section */}
-      <Hero image="/trousers-hero.jpg" name="Trousers" description="Discover the perfect fit with our premium trouser collection." />
-
+ <Hero masterSlug="about" targetSection="trousers" />
       {/* Synchronized Control Filter Bar */}
       <FilterBar 
         products={products} // 🎯 Connect the live collection data chunk down to the pill matrix

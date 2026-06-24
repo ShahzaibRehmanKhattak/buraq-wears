@@ -1,43 +1,189 @@
+"use client";
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useStoreModule } from '@/hooks/useStoreModule';
+
 export const Hero = () => {
-  const images = [
-    {
-      title: "The Architecture of Silence",
-      subtitle: "Autumn / Winter 2024",
-      img: "https://lh3.googleusercontent.com/aida-public/AB6AXuBB9Lj9cKmbD--vZPlthPtmeKnJ3qJKGstb7qVkBja9LokynQ34CFKF2tFIlh_msZeygqnACM1-cL4ZfcgiABmKIaHmI4Pv_e_1R0FjmABquJkt9fGHqwRDcJSZF1LtPoVChAL2qI_ahR5hE-ZexxdgSRhwP6sah0dDCA6t64nEZhlMR1_dsoHA8lrgwhwoHRZAwFrI9bCLgJFYoMer_uEQ1zIMs0oihQO-pBCk9dlLD27O6VZXzkbUkUkiEkW41Pn7Js7Nd21EEw"
-    },
-    {
-      title: "The Monolith Collection",
-      subtitle: "NEW SEASON",
-      img: "https://lh3.googleusercontent.com/aida-public/AB6AXuATh97VKPY7vJrxOEBS2nWYlb5UX3ttntTGLLX8Jg4K0zl-TzFXMesX1VNBlUs0yygSOEi1EpRMiKomj_DyW0rxvLOP0C7tdm4IWWiWaIfGxluF6jUUPgWX1pC8lNuT83HoD4xRjL46VvHS1B3dsgcxCYHjbY7ww5VanGxdaCjm7y4zpHjZUoCRSTtipui_xo2n-Taq6-CpgJLwKKG4ZFHRYYEGr0n6yHSIn7EoT2TFsznNFfZ7vffXv8UuKIPSpVWe7GAGpB7ZBA"
+  // 1. Hook into your 'home' module configuration data
+  const hookResponse = useStoreModule("home");
+  const loading = hookResponse?.loading;
+
+  // Track the active slide indexing for the Desktop presentation view
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+
+  // 2. Extract and compile the dynamic carousel slides array
+  let slidesPool = [];
+
+  if (hookResponse && !loading) {
+    const rawSlides = hookResponse.raw?.home_carousel_slides || hookResponse.hero?.carousel;
+
+    if (rawSlides && typeof rawSlides === 'string') {
+      try {
+        const parsed = JSON.parse(rawSlides);
+        if (Array.isArray(parsed)) {
+          slidesPool = parsed;
+        }
+      } catch (err) {
+        console.error("Failed parsing home_carousel_slides string layout array:", err);
+      }
+    } else if (Array.isArray(rawSlides)) {
+      slidesPool = rawSlides;
     }
-  ];
+  }
+
+  // Fallback defaults if database column array is empty
+  if (slidesPool.length === 0) {
+    slidesPool = [
+      {
+        title: "The Architecture of Silence",
+        target_slug: "Autumn / Winter 2026",
+        description: "Bespoke daily essential articles constructed from lightweight luxury weaves.",
+        img: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?q=80&w=1200&auto=format&fit=crop",
+        btn_text: "Shop Collection",
+        btn_url: "/collections/shirts"
+      },
+      {
+        title: "The Monolith Collection",
+        target_slug: "NEW SEASON",
+        description: "Minimalist geometric silhouettes tailored for seamless seasonal adaptations.",
+        img: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?q=80&w=1200&auto=format&fit=crop",
+        btn_text: "Discover",
+        btn_url: "/collections/new-season"
+      }
+    ];
+  }
+
+  const activeDesktopSlide = slidesPool[currentSlideIndex] || slidesPool[0];
+
+  useEffect(() => {
+    if (slidesPool.length <= 1) return;
+    const slideTimer = setInterval(() => {
+      setCurrentSlideIndex((prevIndex) => (prevIndex + 1) % slidesPool.length);
+    }, 6000);
+    return () => clearInterval(slideTimer);
+  }, [slidesPool.length]);
+
+  if (loading) {
+    return (
+      <div className="w-full h-[95vh] min-h-[650px] bg-neutral-950 animate-pulse" />
+    );
+  }
 
   return (
     <>
-      {/* Desktop Hero */}
-      <section className="hidden md:block relative h-[95vh] min-h-[700px] w-full overflow-hidden">
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${images[0].img}')` }} />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/50" />
-        <div className="relative h-full flex flex-col justify-center items-center px-6 text-center text-white">
-          <p className="text-[12px] font-semibold uppercase mb-6 tracking-[0.3em]">{images[0].subtitle}</p>
-          <h1 className="font-display text-[88px] mb-12 max-w-4xl leading-none uppercase">The Architecture <br/> of Silence</h1>
-          <div className="flex gap-6">
-            <button className="bg-white text-black font-bold text-[12px] px-14 py-5 uppercase hover:bg-black hover:text-white transition-all">Shop Collection</button>
-            <button className="bg-transparent border border-white/40 text-white font-bold text-[12px] px-14 py-5 uppercase backdrop-blur-sm hover:bg-white/10 transition-all">Read Narrative</button>
+      {/* Dynamic Style Injection to safely hide scrollbars across browsers on mobile */}
+      <style jsx global>{`
+        .no-scrollbar::-webkit-scrollbar {
+          display: none !important;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none !important;
+          scrollbar-width: none !important;
+        }
+      `}</style>
+
+      {/* ================= DESKTOP HERO SLIDESHOW ================= */}
+      <section className="hidden md:block relative h-[95vh] min-h-[650px] w-full overflow-hidden bg-neutral-950">
+        {slidesPool.map((slide, idx) => (
+          <div
+            key={idx}
+            className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out"
+            style={{
+              backgroundImage: `url('${slide.img || slide.image}')`,
+              opacity: idx === currentSlideIndex ? 1 : 0,
+              zIndex: idx === currentSlideIndex ? 1 : 0
+            }}
+          />
+        ))}
+
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/70 z-10" />
+        
+        <div className="relative z-20 h-full flex flex-col justify-center items-center px-6 text-center text-white max-w-5xl mx-auto">
+          <p className="text-[11px] font-bold uppercase mb-5 tracking-[0.3em]">
+            {activeDesktopSlide?.target_slug || activeDesktopSlide?.subtitle || "COLLECTION FRAMEWORK"}
+          </p>
+          
+          <h1 className="font-display text-[54px] lg:text-[76px] mb-5 max-w-4xl font-bold leading-[1.1] uppercase tracking-wide drop-shadow-sm whitespace-pre-line">
+            {activeDesktopSlide?.title}
+          </h1>
+
+          {activeDesktopSlide?.description && (
+            <p className="text-[12px] text-neutral-200 uppercase tracking-[0.18em] max-w-xl mx-auto mb-8 leading-relaxed antialiased">
+              {activeDesktopSlide.description}
+            </p>
+          )}
+
+          <div className="flex gap-4">
+            <Link 
+              href={activeDesktopSlide?.btn_url?.startsWith('/') ? activeDesktopSlide.btn_url : `/${activeDesktopSlide?.btn_url || 'collections'}`}
+              className="bg-white text-black font-bold text-[11px] px-12 py-4.5 uppercase hover:bg-black hover:text-white border border-white transition-all duration-200 tracking-widest rounded-sm select-none"
+            >
+              {activeDesktopSlide?.btn_text || "Shop Collection"}
+            </Link>
+            <Link 
+              href="/lookbook" 
+              className="bg-transparent border border-white/30 text-white font-bold text-[11px] px-12 py-4.5 uppercase backdrop-blur-sm hover:bg-white/10 transition-all duration-200 tracking-widest rounded-sm"
+            >
+              Read Narrative
+            </Link>
           </div>
+
+          {slidesPool.length > 1 && (
+            <div className="absolute bottom-10 flex gap-2.5 z-30">
+              {slidesPool.map((_, dotIdx) => (
+                <button
+                  key={dotIdx}
+                  onClick={() => setCurrentSlideIndex(dotIdx)}
+                  className={`h-1 transition-all duration-300 rounded-full ${dotIdx === currentSlideIndex ? 'w-8 bg-white' : 'w-2 bg-white/40'}`}
+                  aria-label={`Go to slide track frame line point ${dotIdx + 1}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Mobile Hero Carousel */}
-      <section className="md:hidden mt-4 animate-fade-in">
-        <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-3 px-5">
-          {images.map((item, idx) => (
-            <div key={idx} className="flex-shrink-0 w-[90%] snap-center relative aspect-[1.2/1] rounded-xl overflow-hidden bg-gray-200 tap-scale">
-              <img className="absolute inset-0 w-full h-full object-cover grayscale brightness-90" src={item.img} alt={item.title} />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6">
-                <span className="text-white/80 text-[11px] font-bold tracking-[0.2em] mb-1 uppercase">{item.subtitle}</span>
-                <h2 className="text-white font-bold text-[24px] leading-tight mb-4 uppercase tracking-tight">{item.title}</h2>
-                <button className="bg-white text-black text-[13px] py-2.5 px-6 w-max rounded-full font-semibold uppercase">Discover</button>
+      {/* ================= MOBILE HERO SNAP CAROUSEL ================= */}
+      <section className="md:hidden w-full py-6 bg-white overflow-hidden">
+        <div className="flex overflow-x-auto no-scrollbar snap-x snap-mandatory gap-4 px-4 pb-2">
+          {slidesPool.map((item, idx) => (
+            <div 
+              key={idx} 
+              className="flex-shrink-0 w-[85%] snap-center relative aspect-[4/5] max-h-[460px] rounded-lg overflow-hidden bg-neutral-900 shadow-md border border-neutral-100"
+            >
+              {/* Image Layout Layer */}
+              <img 
+                className="absolute inset-0 w-full h-full object-cover grayscale brightness-[0.85] contrast-[1.05]" 
+                src={item.img || item.image} 
+                alt={item.title} 
+                loading="lazy"
+              />
+              
+              {/* Dynamic Gradient Scrim */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent z-10" />
+              
+              {/* Content Box */}
+              <div className="absolute inset-0 p-5 z-20 flex flex-col justify-end items-start w-full">
+                <span className="text-[9px] text-white/70 font-bold tracking-[0.2em] mb-1.5 uppercase block">
+                  {item.target_slug || item.subtitle || "New Season"}
+                </span>
+                
+                <h2 className="text-white font-bold text-xl leading-tight mb-2 uppercase tracking-wide line-clamp-2 max-w-full drop-shadow-sm">
+                  {item.title}
+                </h2>
+
+                {item.description && (
+                  <p className="text-[10px] text-neutral-300 font-medium tracking-normal normal-case leading-normal mb-4 line-clamp-2 pr-2">
+                    {item.description}
+                  </p>
+                )}
+                
+                <Link 
+                  href={item.btn_url?.startsWith('/') ? item.btn_url : `/${item.btn_url || 'collections'}`}
+                  className="bg-white text-black text-[10px] py-2.5 px-5 rounded-sm font-bold uppercase tracking-wider text-center shadow active:scale-95 transition-transform"
+                >
+                  {item.btn_text || "Discover"}
+                </Link>
               </div>
             </div>
           ))}

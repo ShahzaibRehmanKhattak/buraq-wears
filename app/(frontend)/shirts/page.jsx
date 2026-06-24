@@ -52,7 +52,8 @@ export default function ShirtsPage() {
       <GlobalStyles />
       
       {/* Brand Aesthetic Banner Section */}
-      <Hero  image="/shirts-hero.jpg" name="Shirts" description="Explore our latest arrivals in the world of menswear." />
+
+<Hero masterSlug="about" targetSection="shirts" />
 
       {/* Synchronized Control Filter Bar */}
       <FilterBar 

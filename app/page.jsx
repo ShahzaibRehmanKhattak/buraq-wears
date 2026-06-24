@@ -30,7 +30,6 @@ import Footer from '@/components/Footer';
 import Navbar  from '@/components/Navbar';
 import { useProducts } from "@/hooks/useProducts";
 
-
 const GlobalStyles = () => (
   <>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
@@ -38,22 +37,23 @@ const GlobalStyles = () => (
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
       
       :root {
-        --primary: #000000;
-        --on-surface-variant: #4c4546;
+        /* Binds your database parameters flawlessly into internal variables */
+        --primary: var(--primary, #000000);
+        --on-surface-variant: var(--accent, #4c4546);
         --surface-container-low: #f3f3f4;
         --outline-variant: rgba(0,0,0,0.1);
         --error: #ba1a1a;
       }
 
       body {
-        font-family: 'Inter', sans-serif;
-        background-color: #f9f9f9;
+        font-family: var(--font-stack, 'Inter', sans-serif);
+        background-color: var(--bg-color, #f9f9f9);
         color: var(--primary);
         -webkit-font-smoothing: antialiased;
       }
 
       .font-display {
-        font-family: 'Inter', sans-serif;
+        font-family: var(--font-stack, 'Inter', sans-serif);
         font-weight: 700;
         letter-spacing: -0.04em;
       }
@@ -84,37 +84,36 @@ export default function App() {
   
   // Products hook dynamically fetches based on state, pills handle themselves!
   const { products, loading } = useProducts({ category: activeCategory });
-return (
-  <div className="antialiased overflow-x-hidden selection:bg-black selection:text-white relative min-h-screen">
-    <GlobalStyles />
-    
-    {/* LOCK THE CANVAS LAYER AWAY FROM CLICKS */}
-    <div className="fixed inset-0 pointer-events-none" style={{ zIndex: -1 }}>
-      <BackgroundCanvas />
+
+  return (
+    /* Selection highlight sets dynamically to your chosen primary theme color */
+    <div className="antialiased overflow-x-hidden selection:bg-[var(--primary)] selection:text-[var(--bg-color)] relative min-h-screen">
+      <GlobalStyles />
+      
+      {/* LOCK THE CANVAS LAYER AWAY FROM CLICKS */}
+      <div className="fixed inset-0 pointer-events-none" style={{ zIndex: -1 }}>
+        <BackgroundCanvas />
+      </div>
+
+      {/* LIFT THE MAIN CONTENT CLEARLY TO THE TOP LAYER */}
+      <main className="relative pt-16 md:pt-0" style={{ zIndex: 50 }}>
+        <Navbar />
+        <Hero />
+        
+        <ProductSection 
+          title=" New Arrivals" 
+          subtitle="Just landed in the studio"
+          items={products} 
+        />
+
+        <LimitedAvailability />
+        
+        {/* <NewArrivals /> */}
+        <TrustSignals />
+        <NewsLetter/>
+        <PsychologicalNudge pageName="home" />
+        <Footer />
+      </main>
     </div>
-
-    {/* LIFT THE MAIN CONTENT CLEARLY TO THE TOP LAYER */}
-    <main className="relative pt-16 md:pt-0" style={{ zIndex: 50 }}>
-      <Navbar />
-      <Hero />
-      
-   
-      
-      <ProductSection 
-        title=" New Arrivals" 
-        subtitle="Just landed in the studio"
-        items={products} 
-      />
-
-      <LimitedAvailability />
-      
-    
-      {/* <NewArrivals /> */}
-      <TrustSignals />
-      <NewsLetter/>
-      <PsychologicalNudge pageName="home" />
-      <Footer />
-    </main>
-  </div>
-);
+  );
 }

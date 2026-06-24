@@ -157,7 +157,10 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <div className="min-h-screen bg-white text-black flex font-sans antialiased selection:bg-black/[0.06] overflow-x-hidden relative">
+    <div 
+      style={{ color: "var(--primary)" }} 
+      className="min-h-screen bg-white flex font-sans antialiased selection:bg-black/[0.06] overflow-x-hidden relative"
+    >
       
       {/* SIDEBAR NAVIGATION */}
       <Sidebar collapsed={isSidebarCollapsed} setCollapsed={setSidebarCollapsed} />
@@ -173,11 +176,12 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#eeeeee] pb-5 gap-4">
             <div>
               <span className="text-[10px] font-bold tracking-widest uppercase text-[#777777]">Core Modules</span>
-              <h1 className="text-[18px] font-semibold tracking-wide text-black mt-0.5">Categories Workspace</h1>
+              <h1 style={{ color: "var(--primary)" }} className="text-[18px] font-semibold tracking-wide mt-0.5">Categories Workspace</h1>
             </div>
             <button
               onClick={() => openDrawer()}
-              className="h-8 bg-black hover:bg-neutral-900 text-white font-medium text-[12px] px-3 rounded-md flex items-center justify-center gap-1.5 transition-colors self-start sm:self-auto"
+              style={{ backgroundColor: "var(--primary)", color: "var(--bg-color)" }}
+              className="h-8 hover:opacity-90 font-medium text-[12px] px-3 rounded-md flex items-center justify-center gap-1.5 transition-colors self-start sm:self-auto"
             >
               <Plus size={14} strokeWidth={2} /> Add Category
             </button>
@@ -200,7 +204,8 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
                 placeholder="Filter by name or identifier slug..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-white border border-[#dddddd] rounded-md h-8 pl-8 pr-3 text-[12px] font-normal focus:outline-none focus:border-black transition-colors text-black placeholder:text-[#999999]"
+                style={{ color: "var(--primary)" }}
+                className="w-full bg-white border border-[#dddddd] rounded-md h-8 pl-8 pr-3 text-[12px] font-normal focus:outline-none focus:border-black transition-colors placeholder:text-[#999999]"
               />
             </div>
             
@@ -209,10 +214,12 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
                 <button
                   key={audience}
                   onClick={() => setSelectedAudience(audience)}
+                  style={{
+                    backgroundColor: selectedAudience === audience ? "var(--primary)" : "transparent",
+                    color: selectedAudience === audience ? "var(--bg-color)" : "var(--accent)"
+                  }}
                   className={`px-2.5 h-7 rounded-md text-[11px] font-medium transition-colors whitespace-nowrap ${
-                    selectedAudience === audience 
-                      ? 'bg-black text-white' 
-                      : 'text-[#555555] hover:text-black hover:bg-black/[0.04]'
+                    selectedAudience !== audience && 'text-[#555555] hover:text-black hover:bg-black/[0.04]'
                   }`}
                 >
                   {audience}
@@ -234,7 +241,7 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
                   <th className="py-3 px-4 text-right pr-5 w-28">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#eeeeee] text-[13px] text-black">
+              <tbody style={{ color: "var(--primary)" }} className="divide-y divide-[#eeeeee] text-[13px]">
                 {filteredCategories.length === 0 ? (
                   <tr>
                     <td colSpan="6" className="py-12 text-center text-[#777777] font-medium tracking-wide">
@@ -249,18 +256,18 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
                           {category.image_url ? (
                             <img src={category.image_url} alt="" className="w-8 h-8 rounded-sm object-cover border border-[#eeeeee] bg-[#fcfcfc]" />
                           ) : (
-                            <div className="w-8 h-8 rounded-sm bg-black/[0.04] flex items-center justify-center text-black font-semibold text-[11px]">
+                            <div style={{ color: "var(--primary)" }} className="w-8 h-8 bg-black/[0.04] flex items-center justify-center font-semibold text-[11px]">
                               {category.name?.substring(0, 2).toUpperCase()}
                             </div>
                           )}
                           <div>
-                            <div className="font-medium text-[13px] text-black tracking-wide leading-tight">{category.name}</div>
+                            <div style={{ color: "var(--primary)" }} className="font-medium text-[13px] tracking-wide leading-tight">{category.name}</div>
                             <div className="text-[#777777] text-[11px] font-mono mt-0.5">{category.slug}</div>
                           </div>
                         </div>
                       </td>
                       <td className="py-3.5 px-4">
-                        <span className="bg-black/[0.04] text-black border border-black/[0.03] px-1.5 py-0.5 rounded-sm text-[11px] font-medium">
+                        <span style={{ color: "var(--primary)" }} className="bg-black/[0.04] border border-black/[0.03] px-1.5 py-0.5 rounded-sm text-[11px] font-medium">
                           {category.classification_node || 'Parent Node'}
                         </span>
                       </td>
@@ -305,7 +312,7 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
           {/* Drawer Header */}
           <div className="p-5 border-b border-[#eeeeee] flex justify-between items-center bg-white sticky top-0 z-10">
             <div>
-              <h2 className="text-[14px] font-semibold tracking-wide text-black">
+              <h2 style={{ color: "var(--primary)" }} className="text-[14px] font-semibold tracking-wide">
                 {formData.id ? "Modify Node Parameters" : "Provision New Category"}
               </h2>
               <p className="text-[11px] text-[#777777] font-normal mt-0.5">Database Write Manifest Interface</p>
@@ -316,7 +323,7 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
           </div>
 
           {/* Main Form Fields Container */}
-          <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto p-5 space-y-4 text-[12px] text-black font-normal no-scrollbar">
+          <form onSubmit={handleFormSubmit} style={{ color: "var(--primary)" }} className="flex-1 overflow-y-auto p-5 space-y-4 text-[12px] font-normal no-scrollbar">
             {globalError && (
               <div className="p-3 bg-red-50 border border-red-100 rounded-md text-[#de350b] font-medium">
                 Transaction Failure: {globalError}
@@ -347,7 +354,7 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
                 >
                   <input type="file" ref={fileInputRef} accept="image/*" onChange={handleLocalImageUpload} className="hidden" />
                   <UploadCloud size={22} className="text-[#777777] mb-1.5" />
-                  <span className="font-medium text-black text-[12px]">
+                  <span style={{ color: "var(--primary)" }} className="font-medium text-[12px]">
                     {uploadingMedia ? "Writing Raw Bytes..." : "Upload local asset file"}
                   </span>
                   <span className="text-[10px] text-[#888888] mt-0.5 font-normal">PNG, JPG, WEBP up to 5MB</span>
@@ -364,7 +371,8 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full bg-white border border-[#dddddd] rounded-md h-8 px-3 text-[12px] font-medium focus:outline-none focus:border-black transition-colors text-black placeholder:text-[#999999]"
+                  style={{ color: "var(--primary)" }}
+                  className="w-full bg-white border border-[#dddddd] rounded-md h-8 px-3 text-[12px] font-medium focus:outline-none focus:border-black transition-colors placeholder:text-[#999999]"
                   placeholder="e.g., Leather Jackets"
                 />
               </div>
@@ -375,7 +383,8 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
                   required
                   value={formData.slug}
                   onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/ /g, "-") })}
-                  className="w-full bg-white border border-[#dddddd] rounded-md h-8 px-3 font-mono text-[11px] focus:outline-none focus:border-black transition-colors text-black placeholder:text-[#999999]"
+                  style={{ color: "var(--primary)" }}
+                  className="w-full bg-white border border-[#dddddd] rounded-md h-8 px-3 font-mono text-[11px] focus:outline-none focus:border-black transition-colors placeholder:text-[#999999]"
                   placeholder="leather-jackets"
                 />
               </div>
@@ -387,7 +396,8 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
                 rows="2"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full bg-white border border-[#dddddd] rounded-md p-2 text-[12px] focus:outline-none focus:border-black transition-colors text-black resize-none placeholder:text-[#999999]"
+                style={{ color: "var(--primary)" }}
+                className="w-full bg-white border border-[#dddddd] rounded-md p-2 text-[12px] focus:outline-none focus:border-black transition-colors resize-none placeholder:text-[#999999]"
                 placeholder="Articulate metadata details regarding structural configuration..."
               />
             </div>
@@ -399,7 +409,8 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
                   <select
                     value={formData.classification_node}
                     onChange={(e) => setFormData({ ...formData, classification_node: e.target.value })}
-                    className="w-full appearance-none h-8 pl-3 pr-8 text-[12px] font-medium bg-white border border-[#dddddd] rounded-md focus:outline-none focus:border-black text-black transition-colors"
+                    style={{ color: "var(--primary)" }}
+                    className="w-full appearance-none h-8 pl-3 pr-8 text-[12px] font-medium bg-white border border-[#dddddd] rounded-md focus:outline-none focus:border-black transition-colors"
                   >
                     <option value="Parent Category">Parent Structural Node</option>
                     <option value="Sub Category">Sub-Category Cluster</option>
@@ -414,7 +425,8 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
                   <select
                     value={formData.target_audience}
                     onChange={(e) => setFormData({ ...formData, target_audience: e.target.value })}
-                    className="w-full appearance-none h-8 pl-3 pr-8 text-[12px] font-medium bg-white border border-[#dddddd] rounded-md focus:outline-none focus:border-black text-black transition-colors"
+                    style={{ color: "var(--primary)" }}
+                    className="w-full appearance-none h-8 pl-3 pr-8 text-[12px] font-medium bg-white border border-[#dddddd] rounded-md focus:outline-none focus:border-black transition-colors"
                   >
                     <option value="Unisex">Unisex Matrix</option>
                     <option value="Men">Men Segmentation</option>
@@ -433,7 +445,8 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
                   type="number"
                   value={formData.volume_units}
                   onChange={(e) => setFormData({ ...formData, volume_units: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-white border border-[#dddddd] rounded-md h-8 px-3 text-[12px] font-medium focus:outline-none focus:border-black transition-colors text-black"
+                  style={{ color: "var(--primary)" }}
+                  className="w-full bg-white border border-[#dddddd] rounded-md h-8 px-3 text-[12px] font-medium focus:outline-none focus:border-black transition-colors"
                 />
               </div>
               <div className="space-y-1">
@@ -442,7 +455,8 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
                   type="number"
                   value={formData.display_priority}
                   onChange={(e) => setFormData({ ...formData, display_priority: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-white border border-[#dddddd] rounded-md h-8 px-3 text-[12px] font-medium focus:outline-none focus:border-black transition-colors text-black"
+                  style={{ color: "var(--primary)" }}
+                  className="w-full bg-white border border-[#dddddd] rounded-md h-8 px-3 text-[12px] font-medium focus:outline-none focus:border-black transition-colors"
                 />
               </div>
             </div>
@@ -455,7 +469,8 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
                   type="text"
                   value={formData.seo_keywords}
                   onChange={(e) => setFormData({ ...formData, seo_keywords: e.target.value })}
-                  className="w-full bg-white border border-[#dddddd] rounded-md h-8 px-3 focus:outline-none focus:border-black transition-colors text-black placeholder:text-[#999999]"
+                  style={{ color: "var(--primary)" }}
+                  className="w-full bg-white border border-[#dddddd] rounded-md h-8 px-3 focus:outline-none focus:border-black transition-colors placeholder:text-[#999999]"
                   placeholder="leather, coats, minimal fashion"
                 />
               </div>
@@ -471,7 +486,7 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
                   className="accent-black w-3.5 h-3.5 rounded-sm"
                 />
                 <div>
-                  <div className="font-semibold text-black text-[12px]">Active Status</div>
+                  <div style={{ color: "var(--primary)" }} className="font-semibold text-[12px]">Active Status</div>
                   <div className="text-[10px] text-[#777777] font-normal mt-0.5">Publicly visible</div>
                 </div>
               </label>
@@ -484,7 +499,7 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
                   className="accent-black w-3.5 h-3.5 rounded-sm"
                 />
                 <div>
-                  <div className="font-semibold text-black text-[12px]">Highlight Banner</div>
+                  <div style={{ color: "var(--primary)" }} className="font-semibold text-[12px]">Highlight Banner</div>
                   <div className="text-[10px] text-[#777777] font-normal mt-0.5">Promoted node</div>
                 </div>
               </label>
@@ -502,7 +517,8 @@ export default function CategoryDashboardClient({ initialCategories = [] }) {
               <button
                 type="submit"
                 disabled={isSaving}
-                className="flex-1 bg-black hover:bg-neutral-900 disabled:bg-neutral-400 text-white font-medium h-9 rounded-md transition-colors text-[12px]"
+                style={{ backgroundColor: "var(--primary)", color: "var(--bg-color)" }}
+                className="flex-1 font-medium h-9 rounded-md transition-colors text-[12px] hover:opacity-90 disabled:bg-neutral-400"
               >
                 {isSaving ? "Processing..." : "Commit Structure"}
               </button>

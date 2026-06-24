@@ -1,138 +1,79 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-// Dynamic security gate validating role parameters directly from DB profiles
-async function verifyAdminAuthorization(supabase) {
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) {
-    throw new Error("Unauthorized: Active login session required.");
-  }
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
-  // Cross-verify status directly against your profile records schema
-  const { data: profile, error: profileErr } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+// Map endpoint module keys to target Supabase tables
+const targetTableMap = {
+  general: 'shops',
+  branding: 'shops',
+  homepage: 'shops',
+  social: 'shops',
+  seo: 'shops',
+  contact: 'shops',
+  shipping: 'shipping_settings',
+  payment: 'payment_settings',
+  features: 'shop_features'
+};
 
-  if (profileErr || !profile || profile.role !== "admin") {
-    throw new Error("Forbidden: Executive administrative clearance required.");
-  }
-
-  return user;
-}
-
-// 1. GET: Fetch global active frontend parameters layout maps
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const response = NextResponse.json({ message: "Syncing structural values..." });
-    const allCookies = cookieStore.getAll();
+    // Fetch entire configuration map for ID 1 simultaneously
+    const [shopRes, shippingRes, paymentRes, featuresRes] = await Promise.all([
+      supabase.from('shops').select('*').eq('id', 1).single(),
+      supabase.from('shipping_settings').select('*').eq('id', 1).single(),
+      supabase.from('payment_settings').select('*').eq('id', 1).single(),
+      supabase.from('shop_features').select('*').eq('id', 1).single()
+    ]);
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-      {
-        cookies: {
-          getAll() { return allCookies; },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-              response.cookies.set(name, value, options);
-            });
-          }
-        }
+    if (shopRes.error) throw shopRes.error;
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        general: shopRes.data,
+        branding: shopRes.data,
+        homepage: shopRes.data,
+        social: shopRes.data,
+        seo: shopRes.data,
+        contact: shopRes.data,
+        shipping: shippingRes.data || {},
+        payment: paymentRes.data || {},
+        features: featuresRes.data || {}
       }
-    );
-
-    // Target the absolute target single row container
-    const { data, error } = await supabase
-      .from("site_settings")
-      .eq("id", "SYSTEM_GLOBAL_ROOT")
-      .single();
-
-    if (error) throw error;
-
-    return new NextResponse(JSON.stringify({ success: true, data }), {
-      status: 200,
-      headers: response.headers
     });
-  } catch (err) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
-// 2. POST: Complete payload mutation update for system changes
-export async function POST(request) {
+export async function POST(req) {
   try {
-    const cookieStore = await cookies();
-    const response = NextResponse.json({ message: "Committing state matrices..." });
-    const allCookies = cookieStore.getAll();
+    const { searchParams } = new URL(req.url);
+    const targetModule = searchParams.get('module');
+    const payload = await req.json();
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-      {
-        cookies: {
-          getAll() { return allCookies; },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-              response.cookies.set(name, value, options);
-            });
-          }
-        }
-      }
-    );
+    if (!targetModule) {
+      return NextResponse.json({ success: false, error: "Target configurations parameter absent." }, { status: 400 });
+    }
 
-    // Enforce administrative safety verification
-    const adminUser = await verifyAdminAuthorization(supabase);
-    const body = await request.json();
+    const dbTableName = targetTableMap[targetModule];
+    if (!dbTableName) {
+      return NextResponse.json({ success: false, error: "Invalid module path execution layout." }, { status: 400 });
+    }
 
-    // Map your custom settings form variables directly to database keys
-    const configurationPayload = {
-      store_name: body.storeName,
-      tagline: body.tagline,
-      logo_url: body.logoUrl,
-      favicon_url: body.faviconUrl,
-      support_email: body.supportEmail,
-      contact_phone: body.contactPhone,
-      
-      primary_color: body.primaryColor,
-      accent_color: body.accentColor,
-      background_color: body.backgroundColor,
-      font_family: body.fontFamily,
-      corner_radius: body.cornerRadius,
-      enable_hero_banner: Boolean(body.enableHeroBanner),
-      enable_marquee_announcement: Boolean(body.enableMarqueeAnnouncement),
-      announcement_text: body.announcementText,
-      
-      currency: body.currency,
-      tax_rate: Number(body.taxRate) || 0.00,
-      enable_guest_checkout: Boolean(body.enableGuestCheckout),
-      require_phone_for_shipping: Boolean(body.requirePhoneForShipping),
-      free_shipping_threshold: Number(body.freeShippingThreshold) || 0.00,
-      flat_shipping_rate: Number(body.flatShippingRate) || 0.00,
-      enable_stock_warnings: Boolean(body.enableStockWarnings),
-      low_stock_threshold: Number(body.lowStockThreshold) || 0,
-      
-      updated_at: new Date().toISOString(),
-      updated_by_admin_id: adminUser.id
-    };
-
-    // Use an upsert mechanism matching the locked core primary identifier string
+    // Enforce mutations securely strictly to Row ID 1
     const { error } = await supabase
-      .from("site_settings")
-      .upsert({ id: "SYSTEM_GLOBAL_ROOT", ...configurationPayload });
+      .from(dbTableName)
+      .update({ ...payload, updated_at: new Date() })
+      .eq('id', 1);
 
     if (error) throw error;
-
-    return new NextResponse(JSON.stringify({ success: true, message: "Configurations committed cleanly." }), {
-      status: 200,
-      headers: response.headers
-    });
-  } catch (err) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 400 });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
