@@ -3,6 +3,7 @@ import "./globals.css";
 import { CartProvider } from '@/hooks/useCart'; 
 import { FavoritesProvider } from "@/hooks/FavoritesContext";
 import { getGlobalSettings } from "@/utils/getSettings"; // Fetches your database settings row
+import React from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -66,7 +67,7 @@ export default async function RootLayout({
           backgroundColor: "var(--bg-color)",
           fontFamily: "var(--font-stack)",
           color: "var(--primary)"
-        }}
+        } as React.CSSProperties}
       >
         <FavoritesProvider>
           <CartProvider>
