@@ -29,20 +29,20 @@ export async function GET(request) {
       query = query.eq("is_active", true);
     }
 
-    // Advanced Flexible Category Parsing (.or syntax matching category_id or sub_category)
-    if (categoryParam) {
+    // Advanced Flexible Category Parsing matching either category_id or sub_category
+    if (categoryParam && categoryParam.trim() !== "" && categoryParam !== "all") {
       let stage1 = categoryParam.replace(/\+/g, " ");
-      let stage2 = decodeURIComponent(stage1);
-      let cleanCategoryName = stage2.replace(/\+/g, " ").trim();
-      
-      if (cleanCategoryName !== "") {
-        const words = cleanCategoryName.split(/\s+/).filter(word => word.length > 0);
+      let cleanCategory = stage1.trim();
 
+      if (cleanCategory.length > 0) {
+        const words = cleanCategory.split(/\s+/).filter(Boolean);
+        
         if (words.length > 0) {
           const conditions = [];
-          words.forEach(word => {
-            conditions.push(`category_id.ilike."%${word}%"`);
-            conditions.push(`sub_category.ilike."%${word}%"`);
+          words.forEach((word) => {
+            // FIX: Removed internal double quotes inside the ilike wildcards string sequence
+            conditions.push(`category_id.ilike.%${word}%`);
+            conditions.push(`sub_category.ilike.%${word}%`);
           });
 
           const orQueryCondition = conditions.join(",");
@@ -52,7 +52,7 @@ export async function GET(request) {
     }
 
     // Maps directly to your 'tags' text column
-    if (tag) {
+    if (tag && tag.trim() !== "") {
       query = query.ilike("tags", `%${tag}%`);
     }
 
@@ -62,7 +62,7 @@ export async function GET(request) {
     }
 
     // Maps directly to your 'title' text column
-    if (search) {
+    if (search && search.trim() !== "") {
       query = query.ilike("title", `%${search}%`);
     }
 
@@ -82,11 +82,10 @@ export async function GET(request) {
     const { data, error } = await query;
     if (error) throw error;
 
-    return NextResponse.json({ success: true, data: data || [] }, { status: 200 });
+    return NextResponse.json({ success: true, data });
   } catch (err) {
-    console.error("💥 [Catalog Endpoint Crash]:", err.message);
     return NextResponse.json(
-      { success: false, error: "Failed to retrieve catalog" }, 
+      { success: false, error: err.message },
       { status: 500 }
     );
   }

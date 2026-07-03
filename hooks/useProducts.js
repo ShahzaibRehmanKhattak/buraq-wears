@@ -16,7 +16,6 @@ export function useProducts({ category = "", search = "", limit = 12 } = {}) {
     let isMounted = true;
 
     async function fetchInitialData() {
-      // 🎯 FORCE TRIGGER THE LOADING EFFECT IMMEDIATELY
       setLoading(true);
       setError(null);
       setHasMore(true);
@@ -24,43 +23,30 @@ export function useProducts({ category = "", search = "", limit = 12 } = {}) {
       try {
         const params = new URLSearchParams();
         
-        // 🎯 MAP FRONTEND KEYS TO BACKEND SCHEMA: 
-        // If 'category' exists, map it to 'category_id' which your database/API expects
+        // 🎯 FIX: Matches parameter key checked in your API route.js
         if (category) {
-          params.append("category_id", category.toLowerCase().trim());
+          params.append("category", category.toLowerCase().trim());
         }
         
         if (search) {
           params.append("search", search.trim());
         }
 
-        // Setup base pagination range
         params.append("from", "0");
         params.append("to", String(batchSize - 1));
 
-        const [filteredRes, masterRes] = await Promise.all([
-          fetch(`/api/clients/products?${params.toString()}`),
-          fetch("/api/clients/products") // Static backend unique categories collector
-        ]);
+        const res = await fetch(`/api/clients/products?${params.toString()}`);
+        const json = await res.json();
 
-        const filteredJson = await filteredRes.json();
-        const masterJson = await masterRes.json();
+        if (!isMounted) return;
 
-        if (!filteredJson.success) throw new Error(filteredJson.error || "Failed filtering archives");
-        if (!masterJson.success) throw new Error(masterJson.error || "Failed indexing global metrics");
-
-        if (isMounted) {
-          setProducts(filteredJson.data || []);
-          
-          if ((filteredJson.data || []).length < batchSize) {
+        if (json.success) {
+          setProducts(json.data || []);
+          if ((json.data || []).length < batchSize) {
             setHasMore(false);
           }
-
-          // Gather unique categories dynamically from the complete stock response list
-          const uniqueCats = [
-            ...new Set(masterJson.data?.map((p) => p.category_id || p.category).filter(Boolean))
-          ];
-          setCategories(uniqueCats);
+        } else {
+          throw new Error(json.error || "Failed fetching dynamic data streams");
         }
       } catch (err) {
         if (isMounted) {
@@ -78,7 +64,6 @@ export function useProducts({ category = "", search = "", limit = 12 } = {}) {
     return () => {
       isMounted = false;
     };
-    // 🎯 RE-RUN ON PREDICTABLE CHANGES (Primitives, not an unstable object reference)
   }, [category, search, batchSize]);
 
   const loadMore = useCallback(async () => {
@@ -90,7 +75,8 @@ export function useProducts({ category = "", search = "", limit = 12 } = {}) {
       const toIndex = fromIndex + batchSize - 1;
 
       const params = new URLSearchParams();
-      if (category) params.append("category_id", category.toLowerCase().trim());
+      // 🎯 FIX: Changed key from category_id to category
+      if (category) params.append("category", category.toLowerCase().trim());
       if (search) params.append("search", search.trim());
       
       params.append("from", String(fromIndex));
@@ -110,11 +96,18 @@ export function useProducts({ category = "", search = "", limit = 12 } = {}) {
         setHasMore(false);
       }
     } catch (err) {
-      console.error("💥 Infinite pagination engine failed:", err.message);
+      console.error(err);
     } finally {
       setLoadingMore(false);
     }
-  }, [products.length, category, search, loadingMore, hasMore, batchSize]);
+  }, [category, search, products.length, batchSize, loadingMore, hasMore]);
 
-  return { products, categories, loading, loadingMore, hasMore, loadMore, error };
+  return {
+    products,
+    loading,
+    loadingMore,
+    hasMore,
+    loadMore,
+    error
+  };
 }

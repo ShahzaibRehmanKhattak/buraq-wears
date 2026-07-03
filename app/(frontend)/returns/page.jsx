@@ -1,11 +1,10 @@
 "use client";
 import React from 'react';
 import { useStoreModule } from '@/hooks/useStoreModule';
-import { ReturnDirectives } from '@/components/ReturnDirectives';
-import { ReturnFAQs } from '@/components/ReturnFAQs';
-import { ReturnForm } from '@/components/ReturnForm';
+import {getTheme} from "@/components/themes";
 
 export default function ReturnsPage() {
+    const Theme = getTheme("default");
   const { returns, loading } = useStoreModule('returns');
 
   // SAFE UTILITY PARSER MATRIX: Converts stringified database blobs into clean arrays
@@ -55,15 +54,15 @@ export default function ReturnsPage() {
             ) : (
               <>
                 {/* Your live parsed database arrays now pipe here directly! */}
-                <ReturnDirectives directives={liveDirectives} />
-                <ReturnFAQs faqs={liveFaqs} />
+                <Theme.ReturnDirectives directives={liveDirectives} />
+                <Theme.ReturnFAQs faqs={liveFaqs} />
               </>
             )}
           </div>
 
           {/* RIGHT COLUMN: ISOLATED INTERACTIVE TRANSMISSION TERMINAL */}
           <div className="col-span-12 lg:col-span-7">
-            <ReturnForm />
+            <Theme.ReturnForm />
           </div>
           
         </div>

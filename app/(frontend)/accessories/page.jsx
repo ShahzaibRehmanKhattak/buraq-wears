@@ -4,14 +4,11 @@ import { Loader2 } from 'lucide-react';
 
 // Hooks & Split Components References
 import { usePageProducts } from '@/hooks/usePageProducts';
-import { ProductCard } from '@/components/ProductCard'; 
-import { Hero } from '@/components/pages/Hero';
-import { FilterBar } from '@/components/pages/FilterBar';
-import { FeaturedEditorial } from '@/components/pages/FeaturedEditorial';
-import { GlobalStyles } from '@/components/pages/GlobalStyles';
-import { PsychologicalNudge } from '@/components/PsychologicalNudge';
+import { getTheme } from "@/components/themes";
+
 
 export default function ShirtsPage() {
+    const Theme = getTheme("default");
   // 🎯 Clean baseline to handle global collections perfectly
   const [activeFilter, setActiveFilter] = useState('All');
   const [sortBy, setSortBy] = useState('featured');
@@ -50,13 +47,13 @@ export default function ShirtsPage() {
 
   return (
     <div className="antialiased bg-white text-[#1a1c1c] font-sans selection:bg-black selection:text-white">
-      <GlobalStyles />
+      <Theme.GlobalStyles />
       
       {/* Brand Aesthetic Banner Section */}
-      <Hero  image="/accessories-hero.jpg" name="Accessories" description="Discover our curated collection of premium accessories." />
+      <Theme.Hero  image="/accessories-hero.jpg" name="Accessories" description="Discover our curated collection of premium accessories." />
 
       {/* Synchronized Control Filter Bar */}
-      <FilterBar 
+      <Theme.FilterBar 
         products={products} // 🎯 Connect the live collection data chunk down to the pill matrix
         activeFilter={activeFilter} 
         setActiveFilter={setActiveFilter} 
@@ -67,8 +64,8 @@ export default function ShirtsPage() {
       />
 
       {/* Editorial Double Layout Section */}
-      <FeaturedEditorial />
-<PsychologicalNudge pageName="accessories" />
+      <Theme.FeaturedEditorial />
+      <Theme.PsychologicalNudge pageName="accessories" />
       {/* Main Core Catalog Section */}
       <main className="max-w-[1440px] mx-auto px-4 md:px-16 lg:px-[64px] py-12 md:py-[80px]">
         {loading ? (
@@ -91,7 +88,7 @@ export default function ShirtsPage() {
                 className="animate-in fade-in slide-in-from-bottom-4 duration-500"
                 style={{ animationDelay: `${idx * 40}ms`, animationFillMode: 'both' }}
               >
-                <ProductCard item={product} />
+                <Theme.ProductCard item={product} />
               </div>
             ))}
           </div>

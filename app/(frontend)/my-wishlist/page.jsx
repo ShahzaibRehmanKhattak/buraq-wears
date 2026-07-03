@@ -3,9 +3,10 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useFavorites } from '@/hooks/FavoritesContext';
 import { useCart } from '@/hooks/useCart';
-import WishlistItem from '@/components/WishlistItem';
+import { getTheme } from "@/components/themes";
 
 export default function WishlistPage() {
+    const Theme = getTheme("default");
   const { favoriteItems: contextItems, loading: isLoading, toggleFavorite } = useFavorites();
   const { addItem } = useCart();
   
@@ -116,7 +117,7 @@ export default function WishlistPage() {
               </div>
             ) : (
               items.map((item) => (
-                <WishlistItem 
+                <Theme.WishlistItem 
                   key={item.id} 
                   item={item} 
                   onRemove={handleRemoveFavorite}

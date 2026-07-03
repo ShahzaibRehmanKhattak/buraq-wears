@@ -1,16 +1,16 @@
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import BottomNav from "@/components/BottomNav"; // REMOVED THE CURLY BRACES
+import { getTheme } from "@/components/themes";
 
 export default function FrontendLayout({ children }) {
+
+  const Theme = getTheme("premium"); // Dynamically switch between "default" and "luxury" themes based on user preference or context
+
+  console.log("Theme:", Theme);
+
   return (
     <>
-        <Navbar />
-       
-          {children}
-        
-       
-        <Footer />
+      <Theme.Navbar />
+      {children}
+      <Theme.Footer />
     </>
   );
 }

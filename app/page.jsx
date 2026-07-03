@@ -18,16 +18,7 @@ import {
   Layers,
   History
 } from 'lucide-react';
-import {BackgroundCanvas} from '../components/BackgroundCanvas';
-
-import { Hero } from '../components/HomeHero';
-import { ProductSection } from '@/components/ProductSection';
-import { TrustSignals } from '@/components/TrustSignals';
-import {LimitedAvailability} from '@/components/LimitedAvailability';
-import { NewsLetter } from '@/components/NewsLetter';
-import { PsychologicalNudge } from '@/components/PsychologicalNudge';
-import Footer from '@/components/Footer';
-import Navbar  from '@/components/Navbar';
+import {getTheme} from "@/components/themes";
 import { useProducts } from "@/hooks/useProducts";
 
 const GlobalStyles = () => (
@@ -80,6 +71,8 @@ const GlobalStyles = () => (
 );
 
 export default function App() {
+  const Theme = getTheme("premium"); // Dynamically switch between "default" and "luxury" themes based on user preference or context
+  console.log("Theme object loaded:", Theme);
   const [activeCategory, setActiveCategory] = useState("");
   
   // Products hook dynamically fetches based on state, pills handle themselves!
@@ -88,31 +81,34 @@ export default function App() {
   return (
     /* Selection highlight sets dynamically to your chosen primary theme color */
     <div className="antialiased overflow-x-hidden selection:bg-[var(--primary)] selection:text-[var(--bg-color)] relative min-h-screen">
-      <GlobalStyles />
+      <Theme.GlobalStyles />
       
       {/* LOCK THE CANVAS LAYER AWAY FROM CLICKS */}
       <div className="fixed inset-0 pointer-events-none" style={{ zIndex: -1 }}>
-        <BackgroundCanvas />
+        <Theme.BackgroundCanvas />
       </div>
 
       {/* LIFT THE MAIN CONTENT CLEARLY TO THE TOP LAYER */}
       <main className="relative pt-16 md:pt-0" style={{ zIndex: 50 }}>
-        <Navbar />
-        <Hero />
+        <Theme.Navbar />
+        <Theme.HomeHero />
         
-        <ProductSection 
-          title=" New Arrivals" 
+        <Theme.ProductSection 
+          title=" Shop " 
           subtitle="Just landed in the studio"
           items={products} 
         />
 
-        <LimitedAvailability />
+      
         
         {/* <NewArrivals /> */}
-        <TrustSignals />
-        <NewsLetter/>
-        <PsychologicalNudge pageName="home" />
-        <Footer />
+        <Theme.TrustSignals />
+        <Theme.PromoBanner />
+        <Theme.NewsLetter/>
+        <Theme.CountDown />
+        <Theme.Testimonials />
+        <Theme.PsychologicalNudge pageName="home" />
+        <Theme.Footer />
       </main>
     </div>
   );

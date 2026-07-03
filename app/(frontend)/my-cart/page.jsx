@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { useCart } from '@/hooks/useCart'; 
-import CartItem from '@/components/CartItem';
-import OrderSummary from '@/components/OrderSummary';
+import {getTheme} from "@/components/themes";
 import { useRouter } from 'next/navigation';
 
 export default function ShoppingBagPage() {
+    const Theme = getTheme("luxury"); // Dynamically switch between "default" and "luxury" themes based on user preference or context
   const router = useRouter();
   const { 
     cartItems, 
@@ -66,7 +66,7 @@ export default function ShoppingBagPage() {
               </div>
             ) : (
               cartItems.map((item) => (
-                <CartItem 
+                <Theme.CartItem 
                   key={item.id} item={item} 
                   onUpdateSize={handleSizeMutation} onUpdateQuantity={handleQuantityMutation} 
                   onRemove={handleRemoveItem} isUpdating={isLoading}
@@ -76,7 +76,7 @@ export default function ShoppingBagPage() {
           </div>
 
           <div className="col-span-12 lg:col-span-5">
-            <OrderSummary 
+            <Theme.OrderSummary 
               subtotal={subtotal} 
               isDisabled={cartItems.length === 0 || isLoading} 
               cartItems={cartItems}

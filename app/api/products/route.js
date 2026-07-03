@@ -1,283 +1,107 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
-// Secure internal helper to assert admin user identity and return account details
-async function getAuthenticatedAdmin(supabase) {
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) {
-    throw new Error("Unauthorized: Active login session required.");
-  }
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+);
 
-  const role = user.user_metadata?.role || user.app_metadata?.role;
-  
-  if (role !== "admin") {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile || profile.role !== "admin") {
-      throw new Error("Forbidden: This endpoint requires an admin role.");
-    }
-  }
-
-  return user;
-}
-
-// 1. GET: Fetch active product listings (with optional page-specific filtering) ordered by creation timestamp
 export async function GET(request) {
   try {
-    const cookieStore = await cookies();
-    const response = NextResponse.json({ message: "Fetching..." });
-    const allCookies = cookieStore.getAll();
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-      {
-        cookies: {
-          getAll() { return allCookies; },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-              response.cookies.set(name, value, options);
-            });
-          }
-        }
-      }
-    );
-
-    // Read an optional targeted 'page' value from the URL query parameters (e.g. /api/products?page=trousers)
     const { searchParams } = new URL(request.url);
-    const targetPage = searchParams.get("page");
+    
+    let categoryParam = searchParams.get("category_id") || searchParams.get("category");
+    const tag = searchParams.get("tag");
+    const search = searchParams.get("search");
+    const featured = searchParams.get("is_featured"); 
+    const is_active = searchParams.get("is_active");
+    const limit = searchParams.get("limit");
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
 
+    // Initialize base query stream mapping your schema flags
     let query = supabase.from("products").select("*");
 
-    // If a specific page value is provided, filter rows accordingly
-    if (targetPage) {
-      query = query.eq("page", targetPage.toLowerCase().trim());
+    // Apply Active Visibility filter flag (Defaults to true if not specified)
+    if (is_active !== null) {
+      if (is_active === "true") query = query.eq("is_active", true);
+    } else {
+      query = query.eq("is_active", true);
     }
 
-    const { data, error } = await query.order("created_at", { ascending: false });
+    // 1. Category Constraint Scope (Isolated block)
+    if (categoryParam && categoryParam.trim() !== "" && categoryParam.toLowerCase() !== "all") {
+      let stage1 = categoryParam.replace(/\+/g, " ");
+      let cleanCategory = stage1.trim();
 
-    if (error) throw error;
-
-    return new NextResponse(JSON.stringify({ success: true, data }), {
-      status: 200,
-      headers: response.headers
-    });
-  } catch (err) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
-  }
-}
-
-// 2. POST: Create a brand new product catalog node entry
-export async function POST(request) {
-  try {
-    const cookieStore = await cookies();
-    const response = NextResponse.json({ message: "Processing creation..." });
-    const allCookies = cookieStore.getAll();
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-      {
-        cookies: {
-          getAll() { return allCookies; },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-              response.cookies.set(name, value, options);
-            });
-          }
+      if (cleanCategory.length > 0) {
+        const words = cleanCategory.split(/\s+/).filter(Boolean);
+        if (words.length > 0) {
+          const conditions = [];
+          words.forEach((word) => {
+            let baseWord = word.toLowerCase();
+            if (baseWord.endsWith('s') && baseWord.length > 4) {
+              baseWord = baseWord.slice(0, -1); // root word singular conversion
+            }
+            conditions.push(`category_id.ilike.%${baseWord}%`);
+            conditions.push(`sub_category.ilike.%${baseWord}%`);
+          });
+          // Locks down the category parameters
+          query = query.or(conditions.join(","));
         }
       }
-    );
-
-    const adminUser = await getAuthenticatedAdmin(supabase);
-    const body = await request.json();
-
-    const payload = {
-      title: body.title,
-      slug: body.slug,
-      sku: body.sku,
-      page: body.page ? String(body.page).toLowerCase().trim() : null, // Added page configuration here
-      barcode: body.barcode || null,
-      brand: body.brand || null,
-      description: body.description,
-      short_description: body.short_description || null,
-      price: Number(body.price) || 0,
-      compare_at_price: body.compare_at_price ? Number(body.compare_at_price) : null,
-      cost_per_item: body.cost_per_item ? Number(body.cost_per_item) : null,
-      discount_price: body.discount_price ? Number(body.discount_price) : null,
-      badge_text: body.badge_text ? String(body.badge_text).trim() : null,
-      stock_qty: Number(body.stock_qty) || 0,
-      availability: body.availability || 'In Stock',
-      category_id: body.category_id || null,
-      sub_category: body.sub_category || null,
-      tags: body.tags || null,
-      colors: body.colors || null,
-      sizes: body.sizes || null,
-      weight: body.weight || null,
-      length: body.length || null,
-      width: body.width || null,
-      height: body.height || null,
-      seo_title: body.seo_title || null,
-      seo_description: body.seo_description || null,
-      warranty: body.warranty || null,
-      material: body.material || null,
-      specifications: body.specifications || null,
-      images: body.images || [], 
-      is_active: Boolean(body.is_active),
-      is_featured: Boolean(body.is_featured),
-      created_by_admin_id: adminUser.id,
-      updated_at: new Date().toISOString()
-    };
-
-    const { data, error } = await supabase
-      .from("products")
-      .insert([payload])
-      .select();
-
-    if (error) throw error;
-
-    return new NextResponse(JSON.stringify({ success: true, data }), {
-      status: 201,
-      headers: response.headers
-    });
-  } catch (err) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 400 });
-  }
-}
-
-// 3. PUT: Modify / Update structural values of an existing record model node
-export async function PUT(request) {
-  try {
-    const cookieStore = await cookies();
-    const response = NextResponse.json({ message: "Processing modification..." });
-    const allCookies = cookieStore.getAll();
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-      {
-        cookies: {
-          getAll() { return allCookies; },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-              response.cookies.set(name, value, options);
-            });
-          }
-        }
-      }
-    );
-
-    const adminUser = await getAuthenticatedAdmin(supabase);
-    const body = await request.json();
-
-    if (!body.id) {
-      throw new Error("Missing required body parameters element target: id");
     }
 
-    const payload = {
-      title: body.title,
-      slug: body.slug,
-      sku: body.sku,
-      page: body.page ? String(body.page).toLowerCase().trim() : null, // Added page update capability here
-      barcode: body.barcode || null,
-      brand: body.brand || null,
-      description: body.description,
-      short_description: body.short_description || null,
-      price: Number(body.price) || 0,
-      compare_at_price: body.compare_at_price ? Number(body.compare_at_price) : null,
-      cost_per_item: body.cost_per_item ? Number(body.cost_per_item) : null,
-      discount_price: body.discount_price ? Number(body.discount_price) : null,
-      badge_text: body.badge_text ? String(body.badge_text).trim() : null,
-      stock_qty: Number(body.stock_qty) || 0,
-      availability: body.availability || 'In Stock',
-      category_id: body.category_id || null,
-      sub_category: body.sub_category || null,
-      tags: body.tags || null,
-      colors: body.colors || null,
-      sizes: body.sizes || null,
-      weight: body.weight || null,
-      length: body.length || null,
-      width: body.width || null,
-      height: body.height || null,
-      seo_title: body.seo_title || null,
-      seo_description: body.seo_description || null,
-      warranty: body.warranty || null,
-      material: body.material || null,
-      specifications: body.specifications || null,
-      images: body.images || [], 
-      is_active: Boolean(body.is_active),
-      is_featured: Boolean(body.is_featured),
-      created_by_admin_id: adminUser.id, 
-      updated_at: new Date().toISOString()
-    };
+    // Maps directly to your 'tags' text column
+    if (tag && tag.trim() !== "") {
+      query = query.ilike("tags", `%${tag}%`);
+    }
 
-    const { data, error } = await supabase
-      .from("products")
-      .update(payload)
-      .eq("id", body.id)
-      .select();
+    // Maps directly to your 'is_featured' boolean column
+    if (featured === "true") {
+      query = query.eq("is_featured", true);
+    }
 
-    if (error) throw error;
-
-    return new NextResponse(JSON.stringify({ success: true, data }), {
-      status: 200,
-      headers: response.headers
-    });
-  } catch (err) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 400 });
-  }
-}
-
-// 4. DELETE: Clear an item from records using targeted item parameter configurations
-export async function DELETE(request) {
-  try {
-    const cookieStore = await cookies();
-    const response = NextResponse.json({ message: "Processing cleanup node..." });
-    const allCookies = cookieStore.getAll();
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-      {
-        cookies: {
-          getAll() { return allCookies; },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-              response.cookies.set(name, value, options);
-            });
+    // 2. 🎯 SEARCH CONSTRAINTS SCOPE (Isolated block allows digging down into categories!)
+    if (search && search.trim() !== "") {
+      const searchWords = search.trim().split(/\s+/).filter(Boolean);
+      if (searchWords.length > 0) {
+        const searchConditions = [];
+        searchWords.forEach((word) => {
+          let rootWord = word.toLowerCase();
+          if (rootWord.endsWith('s') && rootWord.length > 4) {
+            rootWord = rootWord.slice(0, -1);
           }
-        }
+          searchConditions.push(`title.ilike.%${rootWord}%`);
+          searchConditions.push(`description.ilike.%${rootWord}%`);
+          searchConditions.push(`tags.ilike.%${rootWord}%`);
+        });
+        // Layers on top of the selected category, narrowing down the results!
+        query = query.or(searchConditions.join(","));
       }
-    );
+    }
 
-    await getAuthenticatedAdmin(supabase);
-    
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
+    // Handle default ordering using your 'created_at' timestamp column
+    query = query.order("created_at", { ascending: false });
 
-    if (!id) throw new Error("Missing required query element parameter: id");
+    // Explicit Range Pagination checks take total precedence over static limits
+    if (from !== null && to !== null && from !== "" && to !== "") {
+      query = query.range(Number(from), Number(to));
+    } else if (limit && limit !== "") {
+      query = query.limit(Number(limit));
+    } else {
+      query = query.limit(12); 
+    }
 
-    const { error } = await supabase
-      .from("products")
-      .delete()
-      .eq("id", id);
-
+    // Execute constructed PostgREST query
+    const { data, error } = await query;
     if (error) throw error;
 
-    return new NextResponse(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: response.headers
-    });
+    return NextResponse.json({ success: true, data });
   } catch (err) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 400 });
+    return NextResponse.json(
+      { success: false, error: err.message },
+      { status: 500 }
+    );
   }
 }
